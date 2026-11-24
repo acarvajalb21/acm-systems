@@ -16,7 +16,7 @@ La plataforma separa cuatro categorías y las nombra así en pantalla. Conviene 
 | Regla automática | Lógica fija con parámetros visibles. No aprende. | Política de reposición (punto de pedido, nivel objetivo, empaque, tope por vencimiento, recorte por presupuesto); agentes de pronto pago, vencimientos, solicitudes y conciliación; reglas de sugerencia de pagos (mención de factura, titular, valores). |
 | Método estadístico | Fórmula que resume el historial, sin ajuste de coeficientes. | Promedio, último valor, medias móviles, suavizado exponencial, Croston-SBA, misma semana del año anterior; cuantiles empíricos del intervalo; asignación adaptativa de la cobranza (muestreo de Thompson). |
 | Modelo entrenado | Coeficientes ajustados con datos. | Regresión ridge global del pronóstico; regresión logística en línea del modelo de pagos. |
-| IA generativa | Modelo de lenguaje que redacta texto. | Solo el modo opcional del copiloto, apagado por defecto. Ningún pronóstico, sugerencia ni cifra proviene de un modelo generativo. |
+| Asistente de consultas | Por defecto selecciona consultas mediante reglas y presenta los resultados con plantillas. | Copiloto. Las cifras y los pronósticos los calcula la plataforma. |
 
 Los modelos están escritos en Python puro (`aprendizaje/series.py`, `reposicion.py`, `pagos.py`, `cobranza.py`) y
 se ajustan únicamente con los movimientos registrados en la plataforma.
@@ -281,7 +281,7 @@ El agente de cobranza prepara un recordatorio por cliente con cartera vencida y 
 - Estrategias: 9 por segmento, tono (cordial, formal, firme) por momento (3, 10 o 21 días de mora).
 - Elección: bandido bayesiano con muestreo de Thompson. Cada estrategia tiene una creencia Beta que parte de un
   criterio inicial suave y se actualiza con cada recordatorio evaluado. La elección es estable dentro de la semana.
-  Es un método estadístico de asignación adaptativa, no IA generativa.
+  Es un método estadístico de asignación adaptativa.
 
 Tres reglas gobiernan lo que se aprende y lo que se dice:
 

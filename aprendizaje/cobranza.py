@@ -17,7 +17,7 @@ Tres precisiones que gobiernan lo que se aprende y lo que se dice:
   cuotas comparables que no tuvieron recordatorio (`reference`), que tampoco es un grupo de control.
 
 La elección es estable dentro de la semana (semilla por cliente y semana), de modo que el agente no cambia de
-estrategia entre revisiones. Es un método estadístico de asignación adaptativa, no IA generativa.
+estrategia entre revisiones. Es un método estadístico de asignación adaptativa.
 """
 import random
 from collections import defaultdict

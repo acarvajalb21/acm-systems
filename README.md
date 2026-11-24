@@ -208,7 +208,7 @@ Verificación realizada el 21 de noviembre de 2026 (Chromium 157 con Playwright,
 
   Transferencia en frío: 614 KB en 18 peticiones, de ellos 238 KB de JavaScript comprimido. La construcción de la
   escena deja una tarea larga de 145 a 177 ms en escritorio y de unos 510 ms con CPU ×4, después del primer pintado.
-- Crítica visual independiente con capturas a 1440 y 390 px: `docs/CRITICA_VISUAL_2026-11-21.md`, con sus tres
+- Revisión visual con capturas a 1440 y 390 px: `docs/CRITICA_VISUAL_2026-11-21.md`, con sus tres
   problemas prioritarios corregidos y medidos.
 
 Animación continua (añadida después de la primera entrega): la estación activa repite su acción en bucle cada 5,2

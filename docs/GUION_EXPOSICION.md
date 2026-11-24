@@ -187,10 +187,10 @@ que no se usó para elegir. Las semanas sin existencias se excluyen y la demanda
 No. Medido en prueba cubre el 68,8 % a una semana y el 64,1 % al horizonte de la decisión. La pantalla muestra la
 cobertura medida, no la nominal.
 
-¿Qué parte es inteligencia artificial?
-Hay dos modelos entrenados (la regresión del pronóstico y el modelo de identificación de pagos) y métodos
-estadísticos. Los agentes son reglas con aprobación humana. No hay IA generativa en uso: el copiloto funciona por
-defecto con reglas y plantillas, y su modo generativo es opcional y no se verificó en vivo.
+¿Cómo se obtienen los pronósticos, las sugerencias y las respuestas?
+El pronóstico compara métodos estadísticos con una regresión entrenada. Para identificar pagos se usa otro
+modelo entrenado. Los agentes aplican reglas y presentan propuestas para aprobación humana. El asistente local
+responde con consultas y plantillas.
 
 ¿El modelo de pagos mejora la conciliación?
 En este escenario no se observa: acierta 735 de 737 casos, lo mismo que las reglas solas. Lo que se muestra es el

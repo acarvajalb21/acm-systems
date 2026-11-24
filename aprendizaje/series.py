@@ -5,7 +5,7 @@ Qué hay aquí y cómo se clasifica cada pieza:
 - **Métodos estadísticos** (no se entrenan): último valor, promedio, medias móviles, suavizado exponencial,
   Croston-SBA para consumo intermitente y el valor de la misma semana del año anterior.
 - **Modelo entrenado**: UNA regresión ridge global, la misma para todas las referencias (`GlobalRidge`).
-- Nada de esto es una regla fija ni IA generativa: la regla de reposición vive en `reposicion.py`.
+- La regla de reposición está en `reposicion.py`.
 
 Diseño de validación (por referencia, en orden temporal, sobre las semanas utilizables):
 

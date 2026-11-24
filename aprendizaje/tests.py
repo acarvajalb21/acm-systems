@@ -960,7 +960,7 @@ class PagesTests(LearningBase):
         page = self.login(self.requester).get(reverse('methodology'))                        # cualquier perfil puede consultarla
         self.assertEqual(page.status_code, 200)
         self.assertNotContains(page, 'style=')
-        for text in ('Regla automática', 'Método estadístico', 'Modelo entrenado', 'IA generativa', 'no está definido', 'Salidas no es demanda',
+        for text in ('Regla automática', 'Método estadístico', 'Modelo entrenado', 'Asistente de consultas', 'no está definido', 'Salidas no es demanda',
                      'no prueba que el recordatorio causara el pago', 'Datos sintéticos'):
             self.assertContains(page, text)
         rep = page.context['rep']

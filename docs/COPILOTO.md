@@ -69,5 +69,4 @@ enlaza a Reposición con ese presupuesto.
 1. Haga una de las preguntas sugeridas, por ejemplo «¿Qué necesita atención hoy y por qué?».
 2. Señale el distintivo del modo, el bloque de fuentes y periodo y las limitaciones.
 3. Abra uno de los enlaces de la respuesta para mostrar que la cifra coincide con la del registro.
-4. Si le preguntan si es «una IA que conversa», la respuesta correcta es que no: en esta demostración es un
-   asistente de consultas con reglas, y el modo generativo es opcional y no se verificó en vivo.
+4. Explique que el asistente local busca la consulta mediante reglas y presenta los resultados con plantillas.

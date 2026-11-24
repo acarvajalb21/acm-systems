@@ -1,10 +1,10 @@
 # Crítica visual · ACM Systems · `/presentacion/`
 
-Fecha: 21 de noviembre de 2026 · Revisor: crítico visual independiente (sin contexto previo del desarrollo) · Versión revisada: servidor local `http://127.0.0.1:8791/presentacion/` y, para continuidad, `/ingresar/` · Navegador: Chromium (Playwright) · Anchos pedidos: 1440 × 900 y 390 × 844. Comprobaciones adicionales: 1366 × 768, 1440 × 780, 1280 × 720, 768 × 1024 y 390 × 664.
+El 21 de noviembre de 2026 se revisaron las pantallas `/presentacion/` e `/ingresar/` en Chromium con Playwright. Se comprobaron vistas de 1440 × 900, 390 × 844, 1366 × 768, 1440 × 780, 1280 × 720, 768 × 1024 y 390 × 664.
 
-Ejecución: degradada respecto al método completo de Impeccable (un solo contexto: no había herramienta de subagentes ni detector automático). La evidencia es de navegador: capturas, medidas con `getBoundingClientRect`, estilos calculados y consola.
+La revisión se basó en capturas, medidas con `getBoundingClientRect`, estilos calculados y mensajes de la consola del navegador.
 
-Capturas: `D:\Mateo\YOUR iDEa\.playwright-mcp\acm-critica-*.png` (copia en `C:\Users\Mateo\AppData\Local\Temp\claude\ef77b2ea3dec837b\2c893152-caff-43c3-8df4-d267387d803a\scratchpad\critica\`). Prefijos: `d` = 1440 × 900, `m` = 390 × 844, `x` = otros tamaños.
+En los nombres de las capturas, `d` identifica las de 1440 × 900, `m` las de 390 × 844 y `x` las de otros tamaños.
 
 ## Veredicto
 

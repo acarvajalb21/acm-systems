@@ -17,7 +17,7 @@ Puntajes: la salida del modelo es un puntaje sin calibrar, no una probabilidad. 
 junto a la tasa de acierto medida para puntajes similares (`reliability`).
 
 Qué no hace: no aplica pagos. Sus puntajes entran a `cartera.services.suggestions` como una razón más; la decisión
-sigue siendo de contabilidad o del agente de conciliación, con aprobación. Es un modelo entrenado, no IA generativa.
+sigue siendo de contabilidad o del agente de conciliación, con aprobación.
 """
 import logging
 import math
