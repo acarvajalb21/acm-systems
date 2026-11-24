@@ -1,0 +1,11 @@
+{% load static recorrido %}{% recorrido_actual as paso %}{% if paso %}<div class="feria-bar" role="region" aria-label="Recorrido guiado" data-recorrido data-inicio="{{ paso.started }}">
+  <span class="feria-bar-step">{{ paso.n }} de {{ paso.total }}</span>
+  <div class="feria-bar-text"><strong>{{ paso.title }}</strong><small>Qué mostrar: {{ paso.show }}</small></div>
+  <form class="actions" method="post" action="{% url 'tour' %}">{% csrf_token %}
+    <span class="muted nowrap num" data-recorrido-reloj hidden></span>
+    <a class="btn btn-sm btn-ghost" href="{% url 'tour' %}#paso-{{ paso.n }}">Guion</a>
+    {% if not paso.first %}<button class="btn btn-sm" type="submit" name="accion" value="anterior">Anterior</button>{% endif %}
+    {% if paso.last %}<button class="btn btn-sm btn-primary" type="submit" name="accion" value="terminar">Terminar</button>{% else %}<button class="btn btn-sm btn-primary" type="submit" name="accion" value="siguiente">Siguiente</button>{% endif %}
+  </form>
+</div>
+<script src="{% static 'modulos/recorrido.js' %}" defer></script>{% endif %}

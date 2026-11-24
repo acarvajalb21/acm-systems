@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% block title %}{{ party.name }}{% endblock %}
+{% block crumbs %}<p class="crumbs"><a href="{% url 'parties' %}">Clientes</a> / {{ party.get_id_type_display }} {{ party.identification }}</p>{% endblock %}
+{% block heading %}{{ party.name }}{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="card-body">
+    <div class="detail-head">
+      <div>
+        <h2>{{ party.get_kind_display }} · {{ party.get_default_context_display }}</h2>
+        <p class="muted">{{ party.get_id_type_display }} {{ party.identification }}{% if branch.einvoice_email %} · facturación electrónica: {{ branch.einvoice_email }}{% endif %}{% if branch.city %} · {{ branch.city }}{% endif %}</p>
+        <p class="muted">Crédito a {{ party.credit_days }} días{% if party.price_list %} · lista de precios {{ party.price_list.name }}{% endif %}{% if party.requires_po %} · exige orden de compra{% endif %}</p>
+      </div>
+      <div class="actions">
+        <a class="btn" href="{% url 'party_edit' party.pk %}">{% icon 'edit' %}Editar</a>
+        <a class="btn" href="{% url 'party_statement' party.pk %}">{% icon 'download' %}Estado de cuenta</a>
+        <a class="btn btn-primary" href="{% url 'sale_new' %}?tercero={{ party.pk }}">{% icon 'plus' %}Nueva venta</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="kpis">
+  <div class="kpi"><span class="kpi-icon">{% icon 'dollar' 'lg' %}</span><span class="kpi-body"><span class="kpi-label">Saldo total</span><span class="kpi-value">{{ total|pesos }}</span><span class="kpi-sub">Corte {{ today|date:"d/m/Y" }}{% if last_statement %} · último extracto {{ last_statement.confirmed_at|date:"d/m/Y" }}{% endif %}</span></span></div>
+  <div class="kpi"><span class="kpi-icon {% if overdue %}bad{% else %}ok{% endif %}">{% icon 'clock' 'lg' %}</span><span class="kpi-body"><span class="kpi-label">Vencido</span><span class="kpi-value">{{ overdue|pesos }}</span><span class="kpi-sub">1–30: {{ buckets.d30|pesos }} · 31–60: {{ buckets.d60|pesos }} · +60: {{ buckets.old|pesos }}</span></span></div>
+  {% if finance %}<div class="kpi"><span class="kpi-icon warn">{% icon 'inbox' 'lg' %}</span><span class="kpi-body"><span class="kpi-label">Posibles pagos por identificar</span><span class="kpi-value">{{ pending|length }}</span><span class="kpi-sub">Movimientos que podrían ser de este cliente</span></span></div>{% endif %}
+</div>
+
+<section class="card">
+  <div class="card-head"><div><h2>Facturas</h2><p>Facturas a crédito y saldos iniciales, con el número que les asignó el sistema contable.</p></div>{% if finance %}<a class="btn btn-sm" href="{% url 'opening_new' %}?tercero={{ party.pk }}">{% icon 'plus' 'sm' %}Saldo inicial</a>{% endif %}</div>
+  <div class="table-wrap"><table class="mobile-records">
+    <thead><tr><th scope="col">Factura</th><th scope="col">Emisión</th><th scope="col">Vencimiento</th><th scope="col" class="num">Valor</th><th scope="col" class="num">Abonos y ajustes</th><th scope="col" class="num">Saldo</th></tr></thead>
+    <tbody>{% for r in receivables %}<tr>
+      <td class="record-title" data-label="Factura">{% if r.sale %}<a class="cell-title" href="{% url 'sale' r.sale_id %}">{{ r.document }}</a>{% else %}<span class="cell-title">{{ r.document }}</span>{% endif %}<small>{{ r.get_source_display }}</small></td>
+      <td class="nowrap" data-label="Emisión">{{ r.issue_date|date:"d/m/Y" }}</td>
+      <td class="nowrap" data-label="Vencimiento">{{ r.due_date|date:"d/m/Y" }}{% if r.balance > 0 and r.due_date < today %}<small><span class="chip bad">Vencida</span></small>{% endif %}</td>
+      <td class="num" data-label="Valor">{{ r.amount|cop }}</td>
+      <td class="num" data-label="Abonos y ajustes">{% if r.paid %}{{ r.paid|cop }}{% else %}—{% endif %}</td>
+      <td class="num strong" data-label="Saldo">{% if r.balance > 0 %}{{ r.balance|cop }}{% else %}<span class="chip ok">Pagada</span>{% endif %}</td>
+    </tr>{% empty %}<tr class="empty-row"><td colspan="6"><div class="empty">{% icon 'check-circle' %}<strong>Sin facturas en cartera</strong><small>Aparecerán al emitir una venta a crédito para este cliente.</small></div></td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+
+{% if finance and pending %}<section class="card">
+  <div class="card-head"><div><h2>Pagos por identificar que podrían ser de este cliente</h2><p>Abra cada movimiento para revisarlo y confirmar a qué facturas se aplica.</p></div></div>
+  <div class="table-wrap"><table><tbody>{% for t in pending %}<tr><td class="nowrap">{{ t.date|date:"d/m/Y" }}</td><td>{{ t.description }}<small>{{ t.holder_name }} {{ t.origin_account }}</small></td><td class="num strong">{{ t.amount|cop }}</td><td class="num"><a class="btn btn-sm" href="{% url 'bank_txn' t.pk %}?tercero={{ party.pk }}">Revisar</a></td></tr>{% endfor %}</tbody></table></div>
+</section>{% endif %}
+
+<div class="grid-2">
+<section class="card">
+  <div class="card-head"><div><h2>Contactos de cobranza</h2><p>Son distintos del correo de facturación electrónica.</p></div><a class="btn btn-sm" href="{% url 'contact_new' party.pk %}">{% icon 'plus' 'sm' %}Agregar</a></div>
+  <div class="table-wrap"><table><tbody>{% for c in contacts %}<tr>
+    <td><span class="cell-title">{{ c.name }}</span><small>{{ c.get_role_display }}{% if c.notes %} · {{ c.notes }}{% endif %}</small></td>
+    <td>{{ c.get_channel_display }}<small>{{ c.value }}</small></td>
+    <td>{% if c.preferred %}<span class="chip ok">Preferido</span>{% endif %}</td>
+    <td class="num"><form method="post" action="{% url 'contact_remove' party.pk c.pk %}">{% csrf_token %}{{ token_form.token }}<button class="btn btn-sm btn-ghost" type="submit" aria-label="Eliminar contacto">{% icon 'trash' 'sm' %}</button></form></td>
+  </tr>{% empty %}<tr><td><div class="empty">{% icon 'user' %}<strong>Sin contactos de cobranza</strong><small>Use «Agregar» para registrar el primero.</small></div></td></tr>{% endfor %}</tbody></table></div>
+</section>
+{% if finance %}<section class="card">
+  <div class="card-head"><div><h2>Pagadores vinculados</h2><p>Titulares o cuentas que han pagado por este cliente. Se confirman al aplicar un pago.</p></div></div>
+  <div class="table-wrap"><table><tbody>{% for l in links %}<tr>
+    <td><span class="cell-title">{{ l.payer.name|default:"Sin nombre" }}</span><small>{{ l.payer.account_masked|default:"" }}{% if l.relation %} · {{ l.relation }}{% endif %}</small></td>
+    <td><small>Confirmado {{ l.confirmed_at|date:"d/m/Y" }}{% if l.confirmed_by %} por {{ l.confirmed_by.display_name }}{% endif %}</small></td>
+    <td class="num"><form method="post" action="{% url 'payer_remove' party.pk l.pk %}">{% csrf_token %}{{ token_form.token }}<button class="btn btn-sm btn-ghost" type="submit">Desvincular</button></form></td>
+  </tr>{% empty %}<tr><td><div class="empty">{% icon 'credit-card' %}<strong>Aún no hay pagadores vinculados</strong><small>Se vinculan al aplicar un pago en Banco y recaudos.</small></div></td></tr>{% endfor %}</tbody></table></div>
+</section>{% endif %}
+</div>
+
+{% if finance and applications %}<section class="card">
+  <div class="card-head"><h2>Abonos recientes</h2></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th scope="col">Fecha</th><th scope="col">Factura</th><th scope="col">Origen</th><th scope="col" class="num">Valor</th><th scope="col">Recibo en el sistema contable</th><th scope="col">Estado</th></tr></thead>
+    <tbody>{% for a in applications %}<tr>
+      <td class="nowrap">{{ a.collection.date|date:"d/m/Y" }}</td><td>{{ a.receivable.document }}</td>
+      <td>{{ a.get_proposal_display }}<small>{{ a.collection.get_source_display }}</small></td><td class="num">{{ a.amount|cop }}</td>
+      <td>{% if a.voucher %}{{ a.voucher.contable_name|default:a.voucher.get_status_display }}{% else %}<span class="faint">En la factura</span>{% endif %}</td>
+      <td>{% if a.reversed_at %}<span class="chip bad">Revertida</span>{% else %}<span class="chip ok">Vigente</span>{% endif %}</td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+</section>{% endif %}
+
+<section class="card">
+  <div class="card-head"><h2>Ventas recientes</h2></div>
+  <div class="table-wrap"><table><tbody>{% for s in sales %}<tr><td><a class="cell-title" href="{% url 'sale' s.pk %}">{{ s.label }}</a><small>{{ s.get_context_display }}</small></td><td class="nowrap">{{ s.issue_date|date:"d/m/Y" }}</td><td class="num">{{ s.total|cop }}</td><td>{% include 'cartera/_sale_status.html' %}</td></tr>{% empty %}<tr><td><div class="empty">{% icon 'file-text' %}<strong>Sin ventas</strong><small>Use «Nueva venta» para registrar la primera.</small></div></td></tr>{% endfor %}</tbody></table></div>
+</section>
+{% endblock %}

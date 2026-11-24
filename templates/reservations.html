@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block title %}Reservas y entregas{% endblock %}
+{% block heading %}Reservas y entregas{% endblock %}
+{% block content %}
+<div class="page-head">
+  <p>Las reservas apartan unidades de un lote. Al confirmar la entrega se descuenta el saldo físico; al liberar la reserva, las unidades vuelven a estar disponibles.</p>
+  <div class="actions"><a class="btn btn-primary" href="{% url 'reserve' %}">{% icon 'plus' %}Nueva reserva</a></div>
+</div>
+<section class="card">
+  <div class="toolbar"><div class="tabs"><a href="?ver=activas" class="{% if show == 'activas' %}is-active{% endif %}">Activas</a><a href="?ver=todas" class="{% if show != 'activas' %}is-active{% endif %}">Historial</a></div></div>
+  <div class="table-wrap"><table class="mobile-records">
+    <thead><tr><th scope="col">Fecha</th><th scope="col">Referencia / lote</th><th scope="col">Destino</th><th scope="col" class="num">Cantidad</th><th scope="col">Estado</th><th scope="col"><span class="sr-only">Acciones</span></th></tr></thead>
+    <tbody>{% for r in reservations %}<tr>
+      <td class="nowrap" data-label="Creada el">{{ r.created_at|date:"d/m/Y" }}<small>{{ r.created_by.display_name }}</small></td>
+      <td class="record-title" data-label="Referencia y lote"><a class="cell-title" href="{% url 'trace' r.batch_id %}">{{ r.batch.product.name }}</a><small>Lote {{ r.batch.lot }} · {{ r.batch.location }}</small></td>
+      <td data-label="Destino">{{ r.purpose }}{% if r.request %}<small>Solicitud de {{ r.request.requester.display_name }}</small>{% endif %}</td>
+      <td class="num" data-label="Cantidad">{{ r.quantity|num }}</td>
+      <td data-label="Estado">{% if r.status == 'active' %}{% if r.batch.expired %}<span class="chip bad">Lote vencido</span>{% else %}<span class="chip info">Activa</span>{% endif %}{% elif r.status == 'delivered' %}<span class="chip ok">Entregada</span><small>{{ r.closed_at|date:"d/m/Y H:i" }}</small>{% else %}<span class="chip">Liberada</span><small>{{ r.closed_at|date:"d/m/Y H:i" }}</small>{% endif %}</td>
+      <td class="num record-actions" data-label="Acciones">{% if r.status == 'active' %}<div class="actions end">{% if not r.batch.expired %}<a class="btn btn-sm btn-primary" href="{% url 'finish_reservation' r.pk 'dispatch' %}">Entregar</a>{% endif %}<a class="btn btn-sm" href="{% url 'finish_reservation' r.pk 'release' %}">Liberar</a></div>{% endif %}</td>
+    </tr>{% empty %}<tr class="empty-row"><td colspan="6"><div class="empty">{% icon 'bookmark' %}<strong>No hay reservas{% if show == 'activas' %} activas{% endif %}</strong>Cree una con «Nueva reserva» o reserve un lote al atender una solicitud.</div></td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endblock %}

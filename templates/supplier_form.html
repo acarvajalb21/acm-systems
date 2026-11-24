@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block crumbs %}<p class="crumbs"><a href="{% url 'suppliers' %}">{% icon 'arrow-left' 'sm' %} Proveedores</a></p>{% endblock %}
+{% block content %}
+<form method="post" novalidate>{% csrf_token %}
+  {% for f in form.hidden_fields %}{{ f }}{% endfor %}
+  {% include '_form_errors.html' %}
+  <section class="card form-card">
+    <div class="card-head"><h2>Datos del proveedor</h2></div>
+    <div class="card-body"><div class="form-grid">
+      <div class="span-all">{% include '_field.html' with f=form.name %}</div>
+      {% include '_field.html' with f=form.nit %}
+      {% include '_field.html' with f=form.email %}
+      {% include '_field.html' with f=form.phone %}
+      {% include '_field.html' with f=form.active %}
+    </div></div>
+  </section>
+  <section class="card form-card" data-formset="tramos">
+    <div class="card-head"><div><h2>Condiciones de pago</h2><p>Se fijan en cada factura al validarla; los cambios aplican a las facturas que se validen después.</p></div></div>
+    <div class="card-body">
+      <div class="form-grid">
+        {% include '_field.html' with f=form.payment_days %}
+        {% include '_field.html' with f=form.discount_base %}
+      </div>
+      {{ tiers.management_form }}
+      {% if tiers.non_form_errors %}<div class="form-errors">{% icon 'alert-circle' %}<ul>{% for e in tiers.non_form_errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+      <h3 class="fieldset-title">Descuento por pronto pago</h3>
+      <table class="lines">
+        <thead><tr><th scope="col">Si paga dentro de (días)</th><th scope="col">Descuento (%)</th><th></th></tr></thead>
+        <tbody>{% for t in tiers %}<tr><td>{{ t.days }}{% for e in t.days.errors %}<small class="field-error">{{ e }}</small>{% endfor %}</td><td>{{ t.percent }}{% for e in t.percent.errors %}<small class="field-error">{{ e }}</small>{% endfor %}{% for e in t.non_field_errors %}<small class="field-error">{{ e }}</small>{% endfor %}</td><td></td></tr>{% endfor %}</tbody>
+      </table>
+      <p class="help">Ejemplo: 15 días → 5 %, 30 días → 3 %. Deje vacías las filas que no use.</p>
+    </div>
+    <div class="card-foot"><div class="form-actions"><a class="btn btn-ghost" href="{% url 'suppliers' %}">Cancelar</a><button class="btn btn-primary" type="submit">{% icon 'check' %}Guardar proveedor</button></div></div>
+  </section>
+</form>
+{% endblock %}

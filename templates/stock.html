@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}Existencias por lote{% endblock %}
+{% block heading %}Existencias por lote{% endblock %}
+{% block content %}
+<div class="page-head">
+  <p>Saldo físico, reservado y disponible de cada lote. Los lotes vencidos quedan bloqueados y se retiran con una baja.</p>
+  <div class="actions">
+    <a class="btn" href="{% url 'adjust_in' %}">{% icon 'arrow-down-left' %}Saldo inicial o ajuste</a>
+    <a class="btn" href="{% url 'adjust_out' %}">{% icon 'trending-down' %}Baja</a>
+    <a class="btn" href="{% url 'exit_stock' %}">{% icon 'arrow-up-right' %}Salida</a>
+    <a class="btn btn-primary" href="{% url 'invoices' %}?vista=recibir">{% icon 'truck' %}Recibir mercancía</a>
+  </div>
+</div>
+<section class="card">
+  <form class="toolbar" method="get">
+    <div class="search">{% icon 'search' %}<input class="input" type="search" name="q" value="{{ q }}" placeholder="Referencia, código, lote o ubicación" aria-label="Buscar"></div>
+    <select class="input" name="categoria" data-autosubmit aria-label="Categoría"><option value="">Todas las categorías</option>{% for value, label in categories %}<option value="{{ value }}"{% if category == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% if request.GET.ver == 'todos' %}<input type="hidden" name="ver" value="todos">{% endif %}
+    <div class="tabs"><a href="{% url 'stock' %}{% if category %}?categoria={{ category }}{% endif %}" class="{% if request.GET.ver != 'todos' %}is-active{% endif %}">Con saldo</a><a href="?ver=todos{% if category %}&amp;categoria={{ category }}{% endif %}" class="{% if request.GET.ver == 'todos' %}is-active{% endif %}">Todos los lotes</a></div>
+  </form>
+  <div class="table-wrap"><table class="mobile-records">
+    <thead><tr><th scope="col">Referencia / lote</th><th scope="col">Ubicación</th><th scope="col">Vencimiento</th><th scope="col" class="num">Físico</th><th scope="col" class="num">Reservado</th><th scope="col" class="num">Disponible</th><th scope="col"><span class="sr-only">Acciones</span></th></tr></thead>
+    <tbody>{% for b in batches %}<tr>
+      <td class="record-title" data-label="Referencia y lote"><a class="cell-title" href="{% url 'trace' b.pk %}">{{ b.product.name }}</a><small>Lote {{ b.lot }} · {{ b.product.code }} · {{ b.product.get_category_display }}</small></td>
+      <td data-label="Ubicación">{{ b.location }}</td>
+      <td class="nowrap" data-label="Vencimiento">{{ b.expiry|date:"d/m/Y" }}
+        {% if b.expired %}<small><span class="chip bad">Vencido · bloqueado</span></small>
+        {% elif b.days_left <= expiry_days %}<small><span class="chip warn">Vence en {{ b.days_left }} días</span></small>
+        {% else %}<small>{{ b.days_left }} días de vida útil</small>{% endif %}</td>
+      <td class="num" data-label="Físico">{{ b.physical|num }}</td>
+      <td class="num" data-label="Reservado">{{ b.reserved|num }}</td>
+      <td class="num strong" data-label="Disponible">{{ b.available|num }}</td>
+      <td class="num record-actions" data-label="Acciones"><div class="actions end">
+        {% if b.expired and b.physical %}<a class="btn btn-sm btn-danger" href="{% url 'adjust_out' %}?lote={{ b.pk }}&tipo=writeoff">Dar de baja</a>
+        {% elif b.available %}<a class="btn btn-sm" href="{% url 'exit_stock' %}?lote={{ b.pk }}">Salida</a><a class="btn btn-sm" href="{% url 'reserve' %}?lote={{ b.pk }}">Reservar</a>{% endif %}
+        <a class="btn btn-sm btn-ghost" href="{% url 'trace' b.pk %}" aria-label="Ver trazabilidad de {{ b.product.name }}, lote {{ b.lot }}">{% icon 'eye' 'sm' %}</a></div></td>
+    </tr>{% empty %}<tr class="empty-row"><td colspan="7"><div class="empty">{% icon 'layers' %}<strong>No hay lotes {% if q %}que coincidan con la búsqueda{% else %}con saldo{% endif %}</strong>{% if q %}Revise el texto buscado o <a href="{% url 'stock' %}">vea todos los lotes con saldo</a>.{% else %}Registre el saldo inicial del conteo o reciba la mercancía de una factura.{% endif %}</div></td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endblock %}

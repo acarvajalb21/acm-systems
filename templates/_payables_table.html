@@ -1,0 +1,13 @@
+<div class="table-wrap"><table class="mobile-records">
+  <thead><tr>{% if selectable %}<th scope="col"><span class="sr-only">Seleccionar</span></th>{% endif %}<th scope="col">Proveedor / factura</th><th scope="col">Emisión</th><th scope="col">Vence</th><th scope="col" class="num">Saldo</th><th scope="col">Descuento vigente</th><th scope="col" class="num">A pagar hoy</th><th scope="col"><span class="sr-only">Acciones</span></th></tr></thead>
+  <tbody>{% for inv in rows %}<tr>
+    {% if selectable %}<td data-label="Seleccionar"><input class="check" type="checkbox" name="factura" value="{{ inv.pk }}" form="pay-form" id="pay-{{ inv.pk }}" aria-label="Seleccionar factura {{ inv.number }}"></td>{% endif %}
+    <td class="record-title" data-label="Proveedor y factura"><a class="cell-title" href="{% url 'invoice' inv.pk %}">{{ inv.supplier.name }}</a><small>Factura {{ inv.number }}{% if inv.source == 'libro' %} · saldo de apertura{% endif %}{% if inv.scheduled_on %} · <span class="chip info">Programado {{ inv.scheduled_on|date:"d/m" }}</span>{% endif %}</small></td>
+    <td class="nowrap" data-label="Emisión">{{ inv.issue_date|date:"d/m/Y" }}</td>
+    <td class="nowrap" data-label="Vencimiento">{{ inv.due_date|date:"d/m/Y" }}{% if inv.days_to_due < 0 %}<small><span class="chip bad">Vencida hace {{ inv.days_to_due|absval }} días</span></small>{% elif inv.days_to_due <= 7 %}<small><span class="chip warn">En {{ inv.days_to_due }} días</span></small>{% else %}<small>en {{ inv.days_to_due }} días</small>{% endif %}</td>
+    <td class="num" data-label="Saldo">{{ inv.offer.balance|cop }}{% if inv.offer.balance != inv.total %}<small>de {{ inv.total|cop }}</small>{% endif %}</td>
+    <td data-label="Descuento vigente">{% if inv.offer.amount %}<span class="chip ok">{{ inv.offer.percent|pct }} · {{ inv.offer.amount|cop }}</span><small>hasta el {{ inv.offer.deadline|date:"d/m/Y" }}</small>{% elif inv.discount_sum %}<span class="faint">Descuento ya tomado</span>{% elif inv.offer.tiers %}<span class="chip plain">Plazo de descuento cerrado</span>{% else %}<span class="faint">Sin descuento pactado</span>{% endif %}</td>
+    <td class="num strong" data-label="A pagar hoy">{{ inv.offer.due|cop }}</td>
+    <td class="num record-actions" data-label="Acciones"><a class="btn btn-sm btn-primary" href="{% url 'invoice_pay' inv.pk %}">Pagar</a></td>
+  </tr>{% empty %}<tr class="empty-row"><td colspan="{% if selectable %}8{% else %}7{% endif %}"><div class="empty">{% icon 'check-circle' %}<strong>No hay facturas pendientes de pago</strong>Las facturas validadas con saldo aparecerán aquí.</div></td></tr>{% endfor %}</tbody>
+</table></div>

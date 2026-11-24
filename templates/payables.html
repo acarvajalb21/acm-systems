@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block title %}Cuentas por pagar{% endblock %}
+{% block heading %}Cuentas por pagar{% endblock %}
+{% block content %}
+<div class="page-head">
+  <p>Saldo por factura después de pagos, descuentos confirmados, notas crédito y ajustes. Un pago puede cubrir varias facturas del mismo proveedor.</p>
+  <div class="actions">
+    <a class="btn" href="{% url 'ledger_export' %}">{% icon 'download' %}Exportar a Excel</a>
+  </div>
+</div>
+<div class="kpis">
+  <div class="kpi"><span class="kpi-icon">{% icon 'credit-card' 'lg' %}</span><span class="kpi-body"><span class="kpi-label">Saldo por pagar</span><span class="kpi-value">{{ total|pesos }}</span><span class="kpi-sub">{{ rows|length }} factura{{ rows|length|pluralize }} · vencido {{ overdue|pesos }}</span></span></div>
+  <div class="kpi"><span class="kpi-icon warn">{% icon 'percent' 'lg' %}</span><span class="kpi-body"><span class="kpi-label">Descuento si se paga hoy</span><span class="kpi-value">{{ offer|pesos }}</span><span class="kpi-sub">Según los descuentos vigentes</span></span></div>
+  <div class="kpi"><span class="kpi-icon">{% icon 'calendar' 'lg' %}</span><span class="kpi-body"><span class="kpi-label">Pagos programados</span><span class="kpi-value">{{ scheduled_total|pesos }}</span><span class="kpi-sub">{{ scheduled|length }} sin confirmar</span></span></div>
+  <div class="kpi"><span class="kpi-icon ok">{% icon 'check-circle' 'lg' %}</span><span class="kpi-body"><span class="kpi-label">Descuento obtenido en el año</span><span class="kpi-value">{{ year.saved|default:0|pesos }}</span><span class="kpi-sub">No aprovechado: {{ year.lost|default:0|pesos }}</span></span></div>
+</div>
+<section class="card">
+  <form class="toolbar" method="get">
+    <div class="tabs">
+      <a href="?vista=pendientes{% if supplier %}&proveedor={{ supplier.pk }}{% endif %}" class="{% if tab == 'pendientes' %}is-active{% endif %}">Pendientes{% if rows %}<span class="count">{{ rows|length }}</span>{% endif %}</a>
+      <a href="?vista=programados{% if supplier %}&proveedor={{ supplier.pk }}{% endif %}" class="{% if tab == 'programados' %}is-active{% endif %}">Programados{% if scheduled %}<span class="count">{{ scheduled|length }}</span>{% endif %}</a>
+      <a href="?vista=pagos{% if supplier %}&proveedor={{ supplier.pk }}{% endif %}" class="{% if tab == 'pagos' %}is-active{% endif %}">Pagos</a>
+    </div>
+    <input type="hidden" name="vista" value="{{ tab }}">
+    <label class="sr-only" for="f-supplier">Proveedor</label>
+    <select class="input" id="f-supplier" name="proveedor" data-autosubmit><option value="">Todos los proveedores</option>{% for s in suppliers %}<option value="{{ s.pk }}"{% if supplier and supplier.pk == s.pk %} selected{% endif %}>{{ s.name }}</option>{% endfor %}</select>
+    <button class="btn btn-sm" type="submit">Filtrar</button>
+    {% if supplier %}<a class="btn btn-sm btn-ghost" href="{% url 'supplier_account' supplier.pk %}">Cuenta de {{ supplier.name }}</a>{% endif %}
+  </form>
+  {% if tab == 'programados' %}
+  <div class="table-wrap"><table class="mobile-records">
+    <thead><tr><th scope="col">Proveedor</th><th scope="col">Fecha programada</th><th scope="col" class="num">Valor</th><th scope="col">Facturas</th><th scope="col"><span class="sr-only">Acciones</span></th></tr></thead>
+    <tbody>{% for p in scheduled %}<tr><td data-label="Proveedor">{{ p.supplier.name }}</td><td data-label="Fecha programada">{{ p.scheduled_on|date:"d/m/Y" }}</td><td class="num strong" data-label="Valor">{{ p.amount|cop }}</td>
+      <td data-label="Facturas"><small>{% for a in p.allocations.all %}{{ a.invoice.number }}{% if not forloop.last %}, {% endif %}{% endfor %}</small></td>
+      <td class="num" data-label="Acciones"><a class="btn btn-sm btn-primary" href="{% url 'supplier_payment' p.pk %}">Confirmar</a></td></tr>
+    {% empty %}<tr class="empty-row"><td colspan="5"><div class="empty">{% icon 'calendar' %}<strong>No hay pagos programados</strong>Seleccione facturas en «Pendientes» y elija «Programar pago».</div></td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% elif tab == 'pagos' %}
+  <div class="table-wrap"><table class="mobile-records">
+    <thead><tr><th scope="col">Fecha</th><th scope="col">Proveedor</th><th scope="col" class="num">Pagado</th><th scope="col" class="num">Descuento</th><th scope="col">Medio y referencia</th><th scope="col">Estado</th></tr></thead>
+    <tbody>{% for p in done %}<tr>
+      <td class="nowrap" data-label="Fecha">{{ p.paid_on|date:"d/m/Y"|default:"—" }}</td>
+      <td data-label="Proveedor"><a class="cell-title" href="{% url 'supplier_payment' p.pk %}">{{ p.supplier.name }}</a><small>{% for a in p.allocations.all %}{{ a.invoice.number }}{% if not forloop.last %}, {% endif %}{% endfor %}</small></td>
+      <td class="num strong" data-label="Pagado">{{ p.amount|cop }}</td><td class="num" data-label="Descuento">{{ p.discount_total|cop }}</td>
+      <td data-label="Medio y referencia">{{ p.get_method_display }}{% if p.reference %}<small>{{ p.reference }}</small>{% endif %}{% if p.contable_receipt %}<small>Egreso {{ p.contable_receipt }}</small>{% endif %}</td>
+      <td data-label="Estado">{% if p.status == 'reconciled' %}<span class="chip ok">Conciliado</span>{% elif p.status == 'confirmed' %}<span class="chip info">Confirmado</span>{% else %}<span class="chip plain">Anulado</span>{% endif %}</td>
+    </tr>{% empty %}<tr class="empty-row"><td colspan="6"><div class="empty">{% icon 'credit-card' %}<strong>Aún no hay pagos</strong>Regístrelos desde «Pendientes» con «Registrar pago».</div></td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}
+  <form id="pay-form" method="get" action="{% url 'payment_new' %}" class="card-body">
+    <p class="help">Seleccione facturas de un mismo proveedor para programar un pago o registrarlo de una vez.</p>
+    <div class="actions"><button class="btn" type="submit" name="modo" value="programar">{% icon 'calendar' %}Programar pago</button><button class="btn btn-primary" type="submit" name="modo" value="pagar">{% icon 'credit-card' %}Registrar pago</button></div>
+  </form>
+  {% include '_payables_table.html' with selectable=True %}
+  {% endif %}
+</section>
+{% endblock %}

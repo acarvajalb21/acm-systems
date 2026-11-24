@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block title %}Conector contable (simulado){% endblock %}
+{% block heading %}Conector contable (simulado){% endblock %}
+{% block content %}
+<section class="card">
+  <div class="card-body">
+    <div class="detail-head">
+      <div>
+        <h2>Simulador local</h2>
+        <p class="muted">Las facturas y los recibos se crean en un simulador local, sin validez fiscal, y no salen de la plataforma.</p>
+        <p class="muted">Validación fiscal y correo al cliente: simulados.</p>
+      </div>
+      <div class="actions">
+        <form method="post">{% csrf_token %}{{ token_form.token }}<input type="hidden" name="action" value="catalogs"><button class="btn" type="submit">{% icon 'download' %}Actualizar catálogos</button></form>
+        <form method="post">{% csrf_token %}{{ token_form.token }}<input type="hidden" name="action" value="pending"><button class="btn btn-primary" type="submit">{% icon 'activity' %}Retomar envíos pendientes</button></form>
+      </div>
+    </div>
+  </div>
+</section>
+<div class="kpis">
+  <div class="kpi"><span class="kpi-icon">{% icon 'clock' 'lg' %}</span><span class="kpi-body"><span class="kpi-label">Pendientes</span><span class="kpi-value">{{ counts.pending }}</span><span class="kpi-sub">Todavía no se han podido enviar</span></span></div>
+  <div class="kpi"><span class="kpi-icon {% if counts.uncertain or counts.review %}bad{% else %}ok{% endif %}">{% icon 'alert-triangle' 'lg' %}</span><span class="kpi-body"><span class="kpi-label">Inciertos o por revisar</span><span class="kpi-value">{{ counts.uncertain|add:counts.review }}</span><span class="kpi-sub">Se reintentan con la misma clave</span></span></div>
+  <div class="kpi"><span class="kpi-icon warn">{% icon 'slash' 'lg' %}</span><span class="kpi-body"><span class="kpi-label">Rechazados</span><span class="kpi-value">{{ counts.rejected }}</span><span class="kpi-sub">Requieren corrección</span></span></div>
+</div>
+<section class="card">
+  <div class="card-head"><div><h2>Envíos</h2><p>Cada envío se guarda antes de llamar al sistema contable y conserva una sola clave, de modo que un reintento nunca duplica el documento.</p></div></div>
+  <div class="table-wrap"><table class="mobile-records">
+    <thead><tr><th scope="col">Documento</th><th scope="col">Clave</th><th scope="col" class="num">Intentos</th><th scope="col">Estado</th><th scope="col">Respuesta</th><th scope="col"><span class="sr-only">Acciones</span></th></tr></thead>
+    <tbody>{% for s in subs %}<tr>
+      <td data-label="Documento">{{ s.get_kind_display }}<small>{% if s.kind == 'invoice' %}<a href="{% url 'sale' s.target_id %}">Venta {{ s.target_id }}</a>{% else %}Recibo {{ s.target_id }}{% endif %} · {{ s.created_by.display_name }} · {{ s.created_at|date:"d/m/Y H:i" }}</small></td>
+      <td data-label="Clave"><small>{{ s.idempotency_key }}</small></td>
+      <td class="num" data-label="Intentos">{{ s.attempts }}</td>
+      <td data-label="Estado">{% if s.status == 'accepted' %}<span class="chip ok">{{ s.get_status_display }}</span>{% elif s.status == 'rejected' %}<span class="chip bad">{{ s.get_status_display }}</span>{% elif s.status == 'pending' %}<span class="chip">{{ s.get_status_display }}</span>{% else %}<span class="chip warn">{{ s.get_status_display }}</span>{% endif %}</td>
+      <td data-label="Respuesta"><small>{{ s.contable_name }}{% if s.last_error %} {{ s.last_error }}{% endif %}</small></td>
+      <td class="num" data-label="Acciones">{% if s.status == 'accepted' and s.last_error %}<form method="post">{% csrf_token %}{{ token_form.token }}<input type="hidden" name="action" value="rerun"><input type="hidden" name="submission" value="{{ s.pk }}"><button class="btn btn-sm" type="submit">Registrar resultado</button></form>{% endif %}</td>
+    </tr>{% empty %}<tr class="empty-row"><td colspan="6"><div class="empty">{% icon 'activity' %}<strong>Aún no hay envíos</strong><small>Aparecerán aquí cuando se emita una venta o se aplique un pago.</small></div></td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% if vouchers %}<section class="card">
+  <div class="card-head"><div><h2>Recibos de caja por resolver</h2><p>Abra el movimiento para revisar el pago y retomar el recibo.</p></div></div>
+  <div class="table-wrap"><table><tbody>{% for v in vouchers %}<tr><td>{{ v.collection.party.name }}<small>{{ v.created_at|date:"d/m/Y H:i" }}</small></td><td>{{ v.get_status_display }}</td><td><small>{{ v.detail }}</small></td>
+    <td class="num">{% if v.collection.transaction_id %}<a class="btn btn-sm" href="{% url 'bank_txn' v.collection.transaction_id %}">Ver movimiento</a>{% endif %}</td></tr>{% endfor %}</tbody></table></div>
+</section>{% endif %}
+<section class="card">
+  <div class="card-head"><div><h2>Catálogos activos</h2><p>Los formularios solo ofrecen los valores que están activos en el sistema contable.</p></div></div>
+  <div class="table-wrap"><table><tbody>{% for c in catalog %}<tr><td>{{ c.get_kind_display }}</td><td>{{ c.name }}</td><td><small>id {{ c.contable_id }}{% if c.extra.due_date %} · maneja vencimiento{% endif %}{% if c.extra.percentage %} · {{ c.extra.percentage }} %{% endif %}</small></td><td>{% if c.active %}<span class="chip ok">Activo</span>{% else %}<span class="chip plain">Inactivo</span>{% endif %}</td><td class="nowrap"><small>{{ c.fetched_at|date:"d/m/Y H:i" }}</small></td></tr>
+  {% empty %}<tr><td><div class="empty">{% icon 'download' %}<strong>No hay catálogos cargados</strong><small>Use «Actualizar catálogos» para traerlos del simulador.</small></div></td></tr>{% endfor %}</tbody></table></div>
+</section>
+{% endblock %}

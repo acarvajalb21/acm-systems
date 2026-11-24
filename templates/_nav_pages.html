@@ -1,0 +1,43 @@
+{% comment %}Páginas de un grupo de la navegación, filtradas por perfil. Parámetros: g (grupo) y cls (clase de cada enlace).{% endcomment %}{% if g == 'resumen' %}
+<a class="{{ cls }}" href="{% url 'home' %}"{% if section == 'home' %} aria-current="page"{% endif %}>Resumen</a>
+{% url 'flow_map' as u_flow %}{% if u_flow %}<a class="{{ cls }}" href="{{ u_flow }}"{% if section == 'flow_map' %} aria-current="page"{% endif %}>Mapa de flujo</a>{% endif %}
+{% elif g == 'operaciones' %}
+<a class="{{ cls }}" href="{% url 'operations' %}"{% if section == 'operations' %} aria-current="page"{% endif %}>Registrar operación</a>
+{% if is_requester or manager %}<a class="{{ cls }}" href="{% url 'requests' %}"{% if section == 'requests' %} aria-current="page"{% endif %}>{% if is_requester %}Mis solicitudes{% else %}Solicitudes{% endif %}</a>{% endif %}
+{% if can_request %}<a class="{{ cls }}" href="{% url 'new_request' %}">Nueva solicitud</a>{% endif %}
+{% if manager %}<a class="{{ cls }}" href="{% url 'reservations' %}"{% if section == 'reservations' %} aria-current="page"{% endif %}>Reservas y entregas</a>{% endif %}
+{% if receiver %}<a class="{{ cls }}" href="{% url 'reception' %}"{% if section == 'reception' %} aria-current="page"{% endif %}>Recibir mercancía</a>{% endif %}
+{% elif g == 'inventario' %}
+{% if manager %}<a class="{{ cls }}" href="{% url 'stock' %}"{% if section == 'stock' %} aria-current="page"{% endif %}>Existencias por lote</a>
+<a class="{{ cls }}" href="{% url 'movements' %}"{% if section == 'movements' %} aria-current="page"{% endif %}>Movimientos</a>{% endif %}
+{% if documents %}<a class="{{ cls }}" href="{% url 'products' %}"{% if section == 'products' %} aria-current="page"{% endif %}>Catálogo</a>{% endif %}
+{% if manager %}<a class="{{ cls }}" href="{% url 'replenishment' %}"{% if section == 'replenishment' %} aria-current="page"{% endif %}>Reposición</a>{% endif %}
+{% elif g == 'compras' %}
+{% if documents %}<a class="{{ cls }}" href="{% url 'purchase_orders' %}"{% if section == 'purchase_orders' %} aria-current="page"{% endif %}>Pedidos a proveedores</a>
+<a class="{{ cls }}" href="{% url 'invoices' %}"{% if section == 'invoices' %} aria-current="page"{% endif %}>Facturas de proveedores</a>
+<a class="{{ cls }}" href="{% url 'suppliers' %}"{% if section == 'suppliers' %} aria-current="page"{% endif %}>Proveedores</a>{% endif %}
+{% if receiver %}<a class="{{ cls }}" href="{% url 'reception' %}">Recibir mercancía</a>{% endif %}
+{% elif g == 'finanzas' %}
+{% if sales_role %}<a class="{{ cls }}" href="{% url 'sales' %}"{% if section == 'sales' %} aria-current="page"{% endif %}>Ventas</a>
+<a class="{{ cls }}" href="{% url 'parties' %}"{% if section == 'parties' %} aria-current="page"{% endif %}>Clientes</a>
+<a class="{{ cls }}" href="{% url 'prices' %}"{% if section == 'prices' %} aria-current="page"{% endif %}>Listas de precios</a>{% endif %}
+{% if finance %}<a class="{{ cls }}" href="{% url 'portfolio' %}"{% if section == 'portfolio' %} aria-current="page"{% endif %}>Cartera</a>
+<a class="{{ cls }}" href="{% url 'bank' %}"{% if section == 'bank' %} aria-current="page"{% endif %}>Banco</a>
+<a class="{{ cls }}" href="{% url 'payables' %}"{% if section == 'payables' %} aria-current="page"{% endif %}>Cuentas por pagar</a>{% endif %}
+{% if administrator %}<a class="{{ cls }}" href="{% url 'discounts' %}"{% if section == 'discounts' %} aria-current="page"{% endif %}>Descuentos{% if pending_discounts %} <span class="nav-count">{{ pending_discounts }}</span>{% endif %}</a>{% endif %}
+{% if finance %}<a class="{{ cls }}" href="{% url 'contable_status' %}"{% if section == 'contable' %} aria-current="page"{% endif %}>Conector contable</a>{% endif %}
+{% if finance %}{% url 'results' as u_results %}{% if u_results %}<a class="{{ cls }}" href="{{ u_results }}"{% if section == 'results' %} aria-current="page"{% endif %}>Resultados</a>{% endif %}{% endif %}
+{% elif g == 'inteligencia' %}
+{% url 'copilot' as u_copilot %}{% if u_copilot %}<a class="{{ cls }}" href="{{ u_copilot }}"{% if section == 'copilot' %} aria-current="page"{% endif %}>Copiloto</a>{% endif %}
+{% if agents_visible %}<a class="{{ cls }}" href="{% url 'agents' %}"{% if section == 'agents' %} aria-current="page"{% endif %}>Agentes{% if agents_pending %} <span class="nav-count">{{ agents_pending }}</span>{% endif %}</a>{% endif %}
+{% if agents_visible %}{% url 'agents_history' as u_history %}{% if u_history %}<a class="{{ cls }}" href="{{ u_history }}"{% if section == 'agents_history' %} aria-current="page"{% endif %}>Historial de decisiones</a>{% endif %}{% endif %}
+{% if manager %}<a class="{{ cls }}" href="{% url 'replenishment' %}">Pronósticos de reposición</a>{% endif %}
+{% if documents %}<a class="{{ cls }}" href="{% url 'learning' %}"{% if section == 'learning' %} aria-current="page"{% endif %}>Lo aprendido</a>{% endif %}
+{% url 'methodology' as u_method %}{% if u_method %}<a class="{{ cls }}" href="{{ u_method }}"{% if section == 'methodology' %} aria-current="page"{% endif %}>Metodología</a>{% endif %}
+{% url 'tour' as u_tour %}{% if u_tour %}<a class="{{ cls }}" href="{{ u_tour }}"{% if section == 'tour' %} aria-current="page"{% endif %}>Recorrido guiado</a>{% endif %}
+{% elif g == 'admin' %}
+<a class="{{ cls }}" href="{% url 'alerts' %}"{% if section == 'alerts' %} aria-current="page"{% endif %}>Alertas{% if unread_alerts %} <span class="nav-count">{{ unread_alerts }}</span>{% endif %}</a>
+{% if documents %}<a class="{{ cls }}" href="{% url 'settings' %}">Configuración de alertas</a>{% endif %}
+{% if administrator %}<a class="{{ cls }}" href="{% url 'users' %}"{% if section == 'users' %} aria-current="page"{% endif %}>Usuarios</a>
+<a class="{{ cls }}" href="{% url 'audit' %}"{% if section == 'audit' %} aria-current="page"{% endif %}>Auditoría</a>{% endif %}
+{% endif %}

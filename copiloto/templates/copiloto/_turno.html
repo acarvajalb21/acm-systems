@@ -1,0 +1,50 @@
+<div class="bubble is-user"><span class="bubble-meta">Usted</span><p>{{ t.question }}</p></div>
+<div class="bubble is-bot copilot-answer" data-copilot-answer>
+  <span class="bubble-meta">Copiloto · <span class="chip plain{% if t.generative %} solid{% endif %}">{{ t.mode_label }}</span>{% if t.mode_detail %} <span class="copilot-model">{{ t.mode_detail }}</span>{% endif %}</span>
+  {% for p in t.paragraphs %}<p>{{ p }}</p>{% endfor %}
+  {% for n in t.answer.notes %}<p class="copilot-note">{% icon 'info' 'sm' %}<span>{{ n }}</span></p>{% endfor %}
+  {% if t.answer.suggestions %}
+  <form class="copilot-options" method="post" action="{% url 'copilot_ask' %}" data-copilot-form data-fetch>{% csrf_token %}
+    <span class="sources-title">Preguntas disponibles para su perfil</span>
+    {% for s in t.answer.suggestions %}<button class="suggestion" type="submit" name="q" value="{{ s }}">{{ s }}</button>{% endfor %}
+  </form>
+  {% endif %}
+  {% for r in t.results %}
+  <section class="copilot-result">
+    <h3>{{ r.title }}</h3>
+    {% if r.denied %}
+    <div class="empty is-locked">{% icon 'lock' %}<strong>Acceso restringido</strong><p>{{ r.summary }}</p></div>
+    {% elif t.generative %}
+    <p class="copilot-computed"><span class="chip plain">Calculado por la plataforma</span> {{ r.summary }}</p>
+    {% endif %}
+    {% for b in r.blocks %}
+    {% if b.title %}<h4>{{ b.title }}</h4>{% endif %}
+    {% if b.kind == 'list' %}
+    <ul class="prio-list copilot-list">
+      {% for row in b.rows %}<li class="prio-item {{ row.css }}"><span class="prio-mark" aria-hidden="true"></span>
+        <div class="prio-body"><strong>{% if row.url %}<a href="{{ row.url }}">{{ row.text }}</a>{% else %}{{ row.text }}{% endif %}</strong>{% if row.detail %}<p>{{ row.detail }}</p>{% endif %}</div>
+        <span class="chip {{ row.chip }}">{{ row.level }}</span></li>{% endfor %}
+    </ul>
+    {% elif b.kind == 'facts' %}
+    <dl class="meta copilot-facts">{% for row in b.rows %}<div><dt>{{ row.0.text }}</dt><dd>{{ row.1.text }}</dd></div>{% endfor %}</dl>
+    {% else %}
+    <div class="table-wrap"><table class="mobile-records">
+      <thead><tr>{% for c in b.columns %}<th scope="col"{% if c.num %} class="num"{% endif %}>{{ c.label }}</th>{% endfor %}</tr></thead>
+      <tbody>{% for row in b.rows %}<tr>{% for c in row %}<td class="{% if forloop.first %}record-title{% endif %}{% if c.num %} num{% endif %}" data-label="{{ c.label }}">{% if c.url %}<a class="cell-title" href="{{ c.url }}">{{ c.text }}</a>{% else %}{{ c.text }}{% endif %}</td>{% endfor %}</tr>{% endfor %}</tbody>
+    </table></div>
+    {% endif %}
+    {% if b.more %}<p class="copilot-more">Hay {{ b.more }} más: se ven completos en la pantalla enlazada.</p>{% endif %}
+    {% if b.note %}<p class="copilot-more">{{ b.note }}</p>{% endif %}
+    {% endfor %}
+    {% if r.links %}<div class="actions copilot-links">{% for l in r.links %}<a class="btn btn-sm" href="{{ l.url }}">{{ l.label }} {% icon 'arrow-right' 'sm' %}</a>{% endfor %}</div>{% endif %}
+    {% if not r.denied %}
+    <div class="sources">
+      <span class="sources-title">Fuentes y periodo</span>
+      <p class="copilot-period">Periodo: {{ r.period }} · Consultado el {{ r.as_of }}</p>
+      {% if r.sources %}<ol>{% for s in r.sources %}<li>{{ s }}</li>{% endfor %}</ol>{% endif %}
+      {% if r.limitations %}<span class="sources-title copilot-limits-title">Limitaciones</span><ul>{% for l in r.limitations %}<li>{{ l }}</li>{% endfor %}</ul>{% endif %}
+    </div>
+    {% endif %}
+  </section>
+  {% endfor %}
+</div>

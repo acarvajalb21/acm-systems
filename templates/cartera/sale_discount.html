@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block title %}Descuento · {{ sale.label }}{% endblock %}
+{% block crumbs %}<p class="crumbs"><a href="{% url 'sale' sale.pk %}">{% icon 'arrow-left' 'sm' %} {{ sale.label }}</a></p>{% endblock %}
+{% block heading %}Conceder descuento{% endblock %}
+{% block content %}
+<section class="card form-card">
+  <div class="card-body">
+    <div class="detail-head">
+      <div>
+        <h2>{{ sale.party.name }}</h2>
+        <p class="muted">{{ sale.get_context_display }} · lista {{ sale.price_list.name }} · valor a precio de lista {{ gross_total|cop }}{% if current %} · descuento vigente {{ current.amount|cop }} concedido por {{ current.applied_by.display_name }}{% endif %}</p>
+      </div>
+    </div>
+    {% if user.role == 'owner' %}
+      <div class="callout ok">{% icon 'shield' %}<p>Con el perfil de Dirección, el descuento se concede de inmediato y no usa permisos.</p></div>
+    {% elif quota %}
+      {% if already %}
+        <div class="callout ok">{% icon 'check-circle' %}<p>Esta venta ya usó uno de sus permisos de este mes: ajustar el descuento no usa otro.</p></div>
+      {% elif quota.available %}
+        <div class="callout">{% icon 'info' %}<p>Este descuento usará <strong>1 permiso</strong>. Le quedan <strong>{{ quota.available }} de {{ quota.total }}</strong> este mes.</p></div>
+      {% else %}
+        <div class="callout warn">{% icon 'alert-triangle' %}<p><strong>No le quedan permisos este mes</strong> ({{ quota.used }} de {{ quota.total }} usados). El descuento quedará en espera de la confirmación de la dirección y la venta no podrá enviarse al sistema contable hasta que la dirección decida. También puede <a href="{% url 'discounts' %}">pedir más permisos</a>.</p></div>
+      {% endif %}
+    {% endif %}
+    {% if error %}<div class="form-errors" role="alert" tabindex="-1">{% icon 'alert-circle' %}<span>{{ error }}</span></div>{% endif %}
+    <form method="post" novalidate data-discount-form>{% csrf_token %}<input type="hidden" name="token" value="{{ token }}">
+      <div class="table-wrap"><table class="lines receipt-records mobile-records">
+        <thead><tr><th scope="col">Referencia</th><th scope="col" class="num">Cantidad</th><th scope="col" class="num">Precio de lista</th><th scope="col" class="num">Valor de la línea</th><th scope="col" class="num">Descuento ($)</th></tr></thead>
+        <tbody>{% for l in lines %}<tr data-gross="{{ l.gross|stringformat:'.2f' }}">
+          <td class="record-title" data-label="Referencia"><span class="cell-title">{{ l.product.name }}</span></td>
+          <td class="num" data-label="Cantidad">{{ l.quantity }}</td>
+          <td class="num" data-label="Precio de lista">{{ l.unit_price|cop }}</td>
+          <td class="num strong" data-label="Valor de la línea">{{ l.gross|cop }}</td>
+          <td class="num w-md" data-label="Descuento"><label class="sr-only" for="linea-{{ l.pk }}">Descuento de {{ l.product.name }}</label><input class="input" type="number" min="0" step="1" inputmode="numeric" id="linea-{{ l.pk }}" name="linea-{{ l.pk }}" value="{{ l.proposed }}" placeholder="0"></td>
+        </tr>{% endfor %}</tbody>
+      </table></div>
+      <div class="form-grid">
+        <div class="field"><label for="porcentaje">O un porcentaje para todas las líneas <span class="optional">opcional</span></label><input class="input" type="number" min="0" max="100" step="0.1" id="porcentaje" name="porcentaje" value="{{ percent }}" placeholder="Ej.: 5"><small class="help">Si lo escribe, reemplaza los valores por línea.</small></div>
+        <div class="field"><label for="motivo">Motivo del descuento</label><input class="input" id="motivo" name="motivo" maxlength="300" value="{{ reason }}" required placeholder="Ej.: cliente frecuente, compra por volumen"></div>
+      </div>
+      <div class="totals" aria-live="polite">
+        <div><span>Valor a precio de lista</span><strong data-discount-gross>—</strong></div>
+        <div><span>Descuento</span><strong data-discount-total>—</strong></div>
+        <div class="grand"><span>Subtotal con descuento</span><strong data-discount-net>—</strong></div>
+      </div>
+      <div class="form-actions">
+        <a class="btn btn-ghost" href="{% url 'sale' sale.pk %}">Cancelar</a>
+        <button class="btn btn-primary" type="submit">{% icon 'check' %}{% if user.role == 'admin' and quota and not quota.available and not already %}Enviar a la dirección para confirmar{% else %}Conceder descuento{% endif %}</button>
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %}

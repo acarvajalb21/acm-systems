@@ -1,0 +1,12 @@
+<div class="table-wrap"><table>
+  <thead><tr><th scope="col">Factura</th><th scope="col">Vence</th><th scope="col" class="num">Saldo</th><th scope="col" class="num">Descuento que corresponde</th><th scope="col" class="num">Valor a pagar</th><th scope="col" class="num">Descuento aplicado</th><th scope="col">Soporte si el descuento es mayor</th></tr></thead>
+  <tbody>{% for inv in invoices %}<tr>
+    <td><a class="cell-title" href="{% url 'invoice' inv.pk %}">{{ inv.number }}</a><small>Emitida {{ inv.issue_date|date:"d/m/Y" }} · día {{ inv.offer.elapsed }}{% if inv.planned %} · programado {{ inv.planned.amount|cop }}{% endif %}</small></td>
+    <td class="nowrap">{{ inv.due_date|date:"d/m/Y" }}</td>
+    <td class="num">{{ inv.offer.balance|cop }}</td>
+    <td class="num">{% if inv.offer.discount %}{{ inv.offer.percent|pct }} · {{ inv.offer.discount|cop }}<small>hasta el {{ inv.offer.deadline|date:"d/m/Y" }}</small>{% elif inv.discount_sum %}<span class="faint">Ya tomado</span>{% else %}<span class="faint">—</span>{% endif %}{% if inv.offer.lost %}<small>No aprovechado: {{ inv.offer.lost|cop }}</small>{% endif %}</td>
+    <td class="num w-md"><input class="input" type="text" inputmode="decimal" name="amount_{{ inv.pk }}" value="{% if inv.typed %}{{ inv.typed.amount }}{% else %}{{ inv.offer.cash|floatformat:'2u' }}{% endif %}" aria-label="Valor a pagar de {{ inv.number }}"></td>
+    <td class="num w-md"><input class="input" type="text" inputmode="decimal" name="discount_{{ inv.pk }}" value="{% if inv.typed %}{{ inv.typed.discount }}{% else %}{{ inv.offer.discount|floatformat:'2u' }}{% endif %}" aria-label="Descuento de {{ inv.number }}"></td>
+    <td class="w-md"><input class="input" type="text" name="note_{{ inv.pk }}" value="{{ inv.typed.note }}" maxlength="200" placeholder="Aceptación del proveedor" aria-label="Soporte del descuento de {{ inv.number }}"></td>
+  </tr>{% endfor %}</tbody>
+</table></div>

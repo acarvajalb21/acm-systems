@@ -1,0 +1,5 @@
+Imágenes opcionales de la sección «Quiénes somos» de la página de presentación.
+
+Guarde aquí cada imagen (.png, .jpg, .jpeg o .webp; cuadrada, de unos 300 px de lado) y escriba su nombre de
+archivo en el campo "imagen" del integrante en config/presentacion.json. Si el archivo no existe o el nombre no
+es válido, la imagen simplemente no se muestra. Después de agregar una imagen hay que reiniciar el servidor.

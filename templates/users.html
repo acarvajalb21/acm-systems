@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block title %}Usuarios{% endblock %}
+{% block heading %}Usuarios{% endblock %}
+{% block content %}
+<div class="page-head">
+  <p>Cada persona ingresa con su propia cuenta. Los permisos dependen del perfil.</p>
+  <div class="actions"><a class="btn btn-primary" href="{% url 'new_user' %}">{% icon 'plus' %}Crear cuenta</a></div>
+</div>
+<section class="card">
+  <div class="table-wrap"><table class="mobile-records">
+    <thead><tr><th scope="col">Persona</th><th scope="col">Usuario</th><th scope="col">Perfil</th><th scope="col">Último ingreso</th><th scope="col">Estado</th><th scope="col"><span class="sr-only">Acciones</span></th></tr></thead>
+    <tbody>{% for u in users %}<tr>
+      <td class="record-title" data-label="Persona"><span class="cell-title">{{ u.display_name }}</span>{% if u.email %}<small>{{ u.email }}</small>{% endif %}</td>
+      <td data-label="Usuario">{{ u.username }}</td>
+      <td data-label="Perfil">{{ u.get_role_display }}</td>
+      <td class="nowrap" data-label="Último ingreso">{{ u.last_login|date:"d/m/Y H:i"|default:"Nunca" }}</td>
+      <td data-label="Estado">{% if not u.is_active %}<span class="chip">Desactivada</span>{% elif u.must_change_password %}<span class="chip warn">Clave temporal</span>{% else %}<span class="chip ok">Activa</span>{% endif %}</td>
+      <td class="num record-actions" data-label="Acciones">{% if u.manageable %}<div class="actions end">{% if u.is_active %}<a class="btn btn-sm" href="{% url 'reset_password' u.pk %}">{% icon 'key' 'sm' %}Restablecer clave</a><a class="btn btn-sm btn-danger" href="{% url 'toggle_user' u.pk 'deactivate' %}">Desactivar</a>{% else %}<a class="btn btn-sm" href="{% url 'toggle_user' u.pk 'activate' %}">Reactivar</a>{% endif %}</div>{% elif u.pk == user.pk %}<span class="faint">Su cuenta</span>{% else %}<span class="faint">La administra la dirección</span>{% endif %}</td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+<section class="card">
+  <div class="card-head"><h2>Perfiles</h2></div>
+  <div class="table-wrap"><table class="mobile-records">
+    <tbody>
+      <tr><td class="cell-title record-title" data-label="Perfil">Solicitante</td><td data-label="Funciones">Consulta disponibilidad, solicita referencias y sigue sus solicitudes.</td></tr>
+      <tr><td class="cell-title record-title" data-label="Perfil">Inventario</td><td data-label="Funciones">Administra el catálogo, recibe la mercancía por lotes y atiende solicitudes, reservas, entregas, salidas, bajas y ajustes. Registra y valida facturas.</td></tr>
+      <tr><td class="cell-title record-title" data-label="Perfil">Recepción</td><td data-label="Funciones">Recibe la mercancía de las facturas validadas y registra lotes y vencimientos con el escáner.</td></tr>
+      <tr><td class="cell-title record-title" data-label="Perfil">Contabilidad</td><td data-label="Funciones">Registra y valida facturas, configura las condiciones de los proveedores y registra pagos.</td></tr>
+      <tr><td class="cell-title record-title" data-label="Perfil">Facturación</td><td data-label="Funciones">Prepara ventas a precio de lista, administra clientes y consulta precios. Emite en el sistema contable (simulado) si tiene el permiso.</td></tr>
+      <tr><td class="cell-title record-title" data-label="Perfil">Administración</td><td data-label="Funciones">Opera todos los módulos, los usuarios y la auditoría. Concede descuentos de venta dentro de los permisos mensuales que le asigna la dirección.</td></tr>
+      <tr><td class="cell-title record-title" data-label="Perfil">Dirección</td><td data-label="Funciones">Acceso total: resultados del negocio, permisos de descuento de administración, confirmación de descuentos fuera del cupo y cuentas de administración.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block title %}Historial de decisiones{% endblock %}
+{% block heading %}Historial de decisiones{% endblock %}
+{% block crumbs %}<p class="crumbs"><a href="{% url 'agents' %}">{% icon 'arrow-left' 'sm' %} Agentes</a></p>{% endblock %}
+{% block content %}
+<div class="page-head">
+  <p>Cada propuesta de los agentes que ya se decidió: quién la decidió, cuándo, qué se ejecutó y con qué resultado. Incluye las que dejaron de aplicar porque la situación cambió.</p>
+  <div class="actions"><a class="btn" href="{% url 'learning' %}">{% icon 'eye' %}Lo aprendido</a></div>
+</div>
+
+<section class="card">
+  <form class="toolbar" method="get">
+    <div class="filters">
+      <div class="field"><label for="h-agente">Agente</label><select class="input" id="h-agente" name="agente"><option value="">Todos</option>{% for ag in agents %}<option value="{{ ag.key }}"{% if filters.agente == ag.key %} selected{% endif %}>{{ ag.name }}</option>{% endfor %}</select></div>
+      <div class="field"><label for="h-estado">Resultado</label><select class="input" id="h-estado" name="estado"><option value="">Todos ({{ total }})</option>{% for value, label in statuses %}<option value="{{ value }}"{% if filters.estado == value %} selected{% endif %}>{{ label }} ({{ counts|get_item:value }})</option>{% endfor %}</select></div>
+      <div class="field"><label for="h-quien">Quién decidió</label><select class="input" id="h-quien" name="quien"><option value="">Cualquiera</option>{% for p in people %}<option value="{{ p.pk }}"{% if filters.quien == p.pk|stringformat:"s" %} selected{% endif %}>{{ p.display_name }}</option>{% endfor %}<option value="auto"{% if filters.quien == 'auto' %} selected{% endif %}>El agente, al recalcular</option></select></div>
+      <div class="field"><label for="h-desde">Desde</label><input class="input" id="h-desde" type="date" name="desde" value="{{ filters.desde }}"></div>
+      <div class="field"><label for="h-hasta">Hasta</label><input class="input" id="h-hasta" type="date" name="hasta" value="{{ filters.hasta }}"></div>
+      <div class="field"><label for="h-q">Texto</label><input class="input" id="h-q" type="search" name="q" value="{{ filters.q }}" placeholder="Proveedor, cliente, referencia…"></div>
+      <button class="btn" type="submit">{% icon 'search' %}Filtrar</button>
+      {% if filtered %}<a class="btn btn-ghost" href="{% url 'agents_history' %}">Limpiar</a>{% endif %}
+    </div>
+  </form>
+  <div class="table-wrap"><table class="mobile-records">
+    <thead><tr><th scope="col">Cuándo</th><th scope="col">Propuesta</th><th scope="col">Resultado</th><th scope="col">Qué se ejecutó</th><th scope="col">Quién decidió</th></tr></thead>
+    <tbody>{% for a in page %}<tr>
+      <td class="nowrap" data-label="Cuándo">{{ a.decided_at|date:"d/m/Y" }}<small>{{ a.decided_at|date:"H:i" }}</small></td>
+      <td class="record-title" data-label="Propuesta"><a class="cell-title" href="{% url 'agent_action' a.pk %}">{{ a.title }}</a><small>{{ names|get_item:a.agent }}</small></td>
+      <td data-label="Resultado">{% include 'agentes/_estado.html' %}</td>
+      <td data-label="Qué se ejecutó">{% if a.status == 'executed' %}{{ a.result.message|default:"Ejecutada." }}{% if a.result.link %}<small><a href="{{ a.result.link }}">{{ a.result.link_label|default:"Abrir el registro" }}</a></small>{% endif %}{% else %}Nada: {{ a.result.message|default:a.note|default:"no se cambió ningún dato."|lower }}{% endif %}</td>
+      <td data-label="Quién decidió">{% if a.decided_by %}{{ a.decided_by.display_name }}{% else %}El agente, al recalcular{% endif %}{% if a.note and a.decided_by %}<small>{{ a.note }}</small>{% endif %}</td>
+    </tr>{% empty %}<tr class="empty-row"><td colspan="5">{% if filtered %}<div class="empty">{% icon 'search' %}<strong>Ninguna decisión coincide con estos filtros</strong>Cambie los filtros o límpielos para ver todo el historial.<a href="{% url 'agents_history' %}">Limpiar filtros</a></div>{% else %}<div class="empty">{% icon 'list' %}<strong>Aún no hay decisiones</strong>Cuando alguien apruebe o descarte una propuesta, quedará aquí con su resultado.<a href="{% url 'agents' %}#por-aprobar">Ver las propuestas por decidir</a></div>{% endif %}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% include '_pager.html' %}
+</section>
+{% endblock %}

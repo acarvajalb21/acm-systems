@@ -1,0 +1,17 @@
+{# Perfiles de demostración en la pantalla de ingreso. Lo incluye login.html cuando el contexto trae `demo_profiles`. #}
+<h3 id="perfiles-titulo">Entrar con un perfil de demostración</h3>
+<p>Un clic inicia sesión con esa cuenta de prueba. Cada perfil ve solo lo que su rol permite.</p>
+<ul class="profile-list">
+  {% for p in demo_profiles %}
+  <li>
+    <form method="post" action="{% url 'demo_profile' %}">{% csrf_token %}
+      <input type="hidden" name="perfil" value="{{ p.key }}">
+      {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+      <button class="profile-option" type="submit">
+        <span><strong>{{ p.label }}{% if p.area != p.label %} · {{ p.area }}{% endif %}</strong><small>{{ p.name }} — {{ p.can }}</small></span>
+        {% icon 'arrow-right' 'sm' %}
+      </button>
+    </form>
+  </li>
+  {% endfor %}
+</ul>

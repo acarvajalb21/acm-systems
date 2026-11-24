@@ -1,0 +1,52 @@
+{% load static %}<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#141d20">
+<title>{% block title %}Ingresar{% endblock %} · {{ app_name|default:"ACM Systems" }}</title>
+<link rel="icon" type="image/png" href="{% static 'icono/favicon.png' %}">
+<link rel="icon" type="image/svg+xml" href="{% static 'icono/icono.svg' %}">
+<link rel="apple-touch-icon" href="{% static 'icono/apple-180.png' %}">
+<link rel="manifest" href="{% url 'manifest' %}">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ACM Systems">
+<link rel="stylesheet" href="{% static 'app.css' %}">
+</head>
+<body data-sw="{% url 'service_worker' %}">
+<div class="page-progress" aria-hidden="true"></div>
+<a class="skip-link" href="#acceso">Saltar al formulario</a>
+<div class="auth">
+  <section class="auth-intro" aria-label="Qué es esta demostración">
+    <div class="brand">
+      <img class="brand-mark" src="{% static 'icono/icono.svg' %}" alt="" width="30" height="30">
+      <span class="brand-text"><span class="brand-name">{{ app_name|default:"ACM Systems" }}</span><span class="demo-flag">Demostración con datos sintéticos</span></span>
+    </div>
+    <div>
+      <h1>De la solicitud al cobro, en un solo lugar.</h1>
+      <p>Una demostración de cómo una distribuidora de insumos coordina inventario por lotes, compras, ventas y cobros, con pronósticos y agentes que proponen y una persona que decide.</p>
+      <ul class="auth-flow" aria-label="Lo que recorre la demostración">
+        <li><div><strong>Inventario por lote</strong><small>Existencias, reservas y vencimientos; primero sale lo que primero vence.</small></div></li>
+        <li><div><strong>Compras y recepción</strong><small>Pedidos, facturas de proveedores y entrada de mercancía con escáner.</small></div></li>
+        <li><div><strong>Ventas, cartera y banco</strong><small>Facturación, cobros y conciliación con un sistema contable simulado.</small></div></li>
+        <li><div><strong>Pronósticos, agentes y copiloto</strong><small>Propuestas con su sustento; nada se ejecuta sin aprobación.</small></div></li>
+      </ul>
+    </div>
+    <img class="auth-visual" src="{% static 'presentacion/maqueta.webp' %}" alt="" width="1400" height="1050" decoding="async">
+    <p class="auth-foot">{{ company_name|default:"Distribuidora Ejemplo S.A.S." }} es una empresa ficticia. Ningún dato corresponde a personas u organizaciones reales.</p>
+  </section>
+  <main class="auth-panel" id="acceso" tabindex="-1">
+    <div class="auth-card">
+      <div class="brand">
+        <img class="brand-mark" src="{% static 'icono/icono.svg' %}" alt="" width="30" height="30">
+        <span class="brand-text"><span class="brand-name">{{ app_name|default:"ACM Systems" }}</span><span class="demo-flag">Demostración con datos sintéticos</span></span>
+      </div>
+      {% block card %}{% endblock %}
+    </div>
+  </main>
+</div>
+<script src="{% static 'app.js' %}" defer></script>
+<script src="{% static 'motion.js' %}" defer></script>
+</body>
+</html>

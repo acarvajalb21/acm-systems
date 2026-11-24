@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block crumbs %}<p class="crumbs"><a href="{% url 'products' %}">{% icon 'arrow-left' 'sm' %} Catálogo de productos</a></p>{% endblock %}
+{% block content %}
+<div class="page-head"><p>Códigos de barras de las cajas de {{ product.name }}. Se asocian en la recepción la primera vez que se escanea una caja nueva.</p></div>
+<section class="card">
+  <div class="table-wrap"><table class="mobile-records">
+    <thead><tr><th scope="col">Código (GTIN)</th><th scope="col" class="num">Unidades por caja</th><th scope="col">Asociado por</th><th scope="col"><span class="sr-only">Acciones</span></th></tr></thead>
+    <tbody>{% for c in codes %}<tr>
+      <td class="nowrap" data-label="Código">{{ c.gtin }}</td>
+      <td class="num" data-label="Unidades por caja">{{ c.units }}</td>
+      <td data-label="Asociado por">{{ c.created_by.display_name|default:"—" }}<small>{{ c.created_at|date:"d/m/Y" }}</small></td>
+      <td class="num record-actions" data-label="Acciones"><form method="post">{% csrf_token %}<input type="hidden" name="token" value="{% new_token %}"><input type="hidden" name="codigo" value="{{ c.pk }}"><button class="btn btn-sm btn-ghost" type="submit">Quitar</button></form></td>
+    </tr>{% empty %}<tr class="empty-row"><td colspan="4"><div class="empty">{% icon 'tag' %}<strong>Sin códigos registrados</strong>Se agregan solos al escanear una caja de esta referencia en Recibir mercancía.</div></td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endblock %}

@@ -1,0 +1,12 @@
+<tr>
+  <td class="w-wide">{{ lf.product }}
+    {% for e in lf.non_field_errors %}<small class="field-error">{{ e }}</small>{% endfor %}
+    {% for field in lf %}{% for e in field.errors %}<small class="field-error">{{ field.label }}: {{ e }}</small>{% endfor %}{% endfor %}
+  </td>
+  <td class="w-xs">{{ lf.quantity }}</td>
+  <td class="w-md">{{ lf.unit_price }}</td>
+  <td class="w-md">{{ lf.price_reason }}</td>
+  <td class="w-sm">{{ lf.tax_rate }}</td>
+  <td class="w-md">{{ lf.prior_movement }}</td>
+  <td class="del">{{ lf.DELETE }}<label for="{{ lf.DELETE.id_for_label }}" title="Quitar línea" aria-label="Quitar línea">{% icon 'trash' %}</label></td>
+</tr>

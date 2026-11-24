@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% block crumbs %}<p class="crumbs"><a href="{% if invoice %}{% url 'invoice' invoice.pk %}{% else %}{% url 'invoices' %}{% endif %}">{% icon 'arrow-left' 'sm' %} {% if invoice %}Factura {{ invoice.number }}{% else %}Facturas{% endif %}</a></p>{% endblock %}
+{% block content %}
+<form method="post" enctype="multipart/form-data" novalidate>{% csrf_token %}
+  {% for f in form.hidden_fields %}{{ f }}{% endfor %}
+  {% include '_form_errors.html' %}
+  {% if lines.non_form_errors %}<div class="form-errors" role="alert">{% icon 'alert-circle' %}<ul>{% for e in lines.non_form_errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+  {% if imported %}<div class="callout {% if is_pdf %}info{% else %}ok{% endif %}">{% icon 'file-text' %}<div>
+    <p>{% if is_pdf %}<strong>PDF listo para revisión.</strong> Los datos detectados son una propuesta; compare cada campo con el documento.{% else %}<strong>Factura {{ imported.data.number }} de {{ imported.data.supplier_name }} leída.</strong> Verifique la referencia asignada a cada línea y los lotes informados.{% endif %} Se adjuntará{{ imported.files|length|pluralize:"n" }} {{ imported.files|length }} soporte{{ imported.files|length|pluralize }} al guardar.</p>
+    {% if is_pdf %}<a class="btn btn-sm" href="{% url 'invoice_import_file' import_token %}" target="_blank" rel="noopener">Ver PDF original</a>{% endif %}
+  </div></div>{% endif %}
+  {% if imported.data.warnings %}<div class="callout warn">{% icon 'alert-circle' %}<div><strong>Campos que requieren atención</strong><ul>{% for warning in imported.data.warnings %}<li>{{ warning }}</li>{% endfor %}</ul></div></div>{% endif %}
+
+  <section class="card">
+    <div class="card-head"><div><h2>Encabezado</h2><p>Datos del proveedor y del documento tal como aparecen en la factura.</p></div></div>
+    <div class="card-body">
+      <div class="form-grid three">
+        {% include '_field.html' with f=form.supplier %}
+        {% if is_pdf %}
+          {% include '_field.html' with f=form.supplier_name %}
+          {% include '_field.html' with f=form.supplier_nit %}
+          {% include '_field.html' with f=form.pdf_currency %}
+        {% endif %}
+        {% include '_field.html' with f=form.number %}
+        {% include '_field.html' with f=form.issue_date %}
+        {% include '_field.html' with f=form.due_date %}
+        {% include '_field.html' with f=form.order_number %}
+        {% include '_field.html' with f=form.ordered_on %}
+        <div class="span-all">{% include '_field.html' with f=form.cufe %}</div>
+      </div>
+      {% if is_pdf %}<p class="help">Si no selecciona un proveedor existente, el NIT y la razón social se usarán para registrarlo cuando guarde esta factura.</p>{% else %}<p class="help">¿El proveedor no aparece? <a href="{% url 'new_supplier' %}">Créelo aquí</a> y vuelva a esta pantalla.</p>{% endif %}
+    </div>
+  </section>
+
+  {% if payment_terms %}<section class="card">
+    <div class="card-head"><div><h2>Plazo y descuentos de esta factura</h2><p>Se usarán para las cuentas por pagar y el cálculo del pronto pago.</p></div></div>
+    <div class="card-body">
+      {% include '_form_errors.html' with form=payment_terms %}
+      {% if payment_terms_text %}<p class="help"><strong>Condiciones leídas del PDF:</strong> {{ payment_terms_text }}</p>{% endif %}
+      <div class="form-grid">
+        {% include '_field.html' with f=payment_terms.payment_days %}
+        {% include '_field.html' with f=payment_terms.discount_base %}
+      </div>
+      <p class="help">Los plazos se cuentan en días calendario desde la emisión. Confirme la base del descuento si el PDF no la especifica. Deje vacíos los tramos que no apliquen.</p>
+      <div class="form-grid">
+        {% for days_field, percent_field in payment_terms.tier_fields %}
+          {% include '_field.html' with f=days_field %}{% include '_field.html' with f=percent_field %}
+        {% endfor %}
+      </div>
+    </div>
+  </section>{% endif %}
+
+  <section class="card" data-formset="lineas" data-invoice-lines>
+    <div class="card-head"><div><h2>Productos facturados</h2><p>Valores en pesos antes de IVA. Escriba 0 en el valor unitario de las unidades bonificadas.</p></div><button class="btn" type="button" data-add-row>{% icon 'plus' %}Agregar línea</button></div>
+    {{ lines.management_form }}
+    <div class="table-wrap card-body"><table class="lines">
+      <thead><tr><th scope="col">Referencia · descripción y código del proveedor</th><th scope="col">Cantidad</th><th scope="col">Valor unitario</th><th scope="col">Descuento</th><th scope="col">IVA</th><th scope="col">Lote</th><th scope="col">Vence</th><th scope="col" class="num">Total</th><th></th></tr></thead>
+      <tbody>{% for lf in lines %}{% include '_invoice_line.html' %}{% endfor %}</tbody>
+    </table></div>
+    <template>{% with lf=lines.empty_form %}{% include '_invoice_line.html' %}{% endwith %}</template>
+    <div class="card-body">
+      <div class="grid-2">
+        <div>
+          <div class="form-grid">
+            {% include '_field.html' with f=form.global_discount %}
+            {% include '_field.html' with f=form.retention %}
+            <div class="span-all">{% include '_field.html' with f=form.notes %}</div>
+            <div class="span-all">{% include '_field.html' with f=form.files %}</div>
+          </div>
+        </div>
+        <div class="totals">
+          <div><span>Subtotal</span><strong id="t-subtotal">$0</strong></div>
+          <div><span>Descuento global</span><strong id="t-discount">$0</strong></div>
+          <div><span>IVA</span><strong id="t-tax">$0</strong></div>
+          <div><span>Retenciones</span><strong id="t-retention">$0</strong></div>
+          <div class="grand"><span>Total a pagar</span><strong id="t-total">$0</strong></div>
+          {% if is_pdf %}{% include '_field.html' with f=form.pdf_total %}<p class="help payable-check" data-payable="{{ imported.data.payable|default:'0' }}">El total calculado debe coincidir con el total del documento.</p>{% elif imported.data.payable %}<p class="help payable-check" data-payable="{{ imported.data.payable }}">Total informado en el documento: {{ imported.data.payable|cop }}</p>{% endif %}
+        </div>
+      </div>
+    </div>
+    {% if is_pdf %}<div class="card-body">{% include '_field.html' with f=form.pdf_reviewed %}</div>{% endif %}
+    <div class="card-foot"><div class="form-actions">
+      <a class="btn btn-ghost" href="{% if invoice %}{% url 'invoice' invoice.pk %}{% else %}{% url 'invoices' %}{% endif %}">Cancelar</a>
+      <button class="btn btn-primary" type="submit">{% icon 'check' %}{% if invoice %}Guardar cambios{% else %}Guardar factura{% endif %}</button>
+    </div></div>
+  </section>
+</form>
+{% endblock %}

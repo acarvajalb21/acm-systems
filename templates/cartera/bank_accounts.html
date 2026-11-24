@@ -1,0 +1,9 @@
+{% extends 'form.html' %}
+{% block content %}
+<section class="card">
+  <div class="card-head"><div><h2>Cuentas registradas</h2><p>Cuentas del banco simulado. Solo se muestran los últimos 4 dígitos.</p></div></div>
+  <div class="table-wrap"><table><tbody>{% for a in accounts %}<tr><td><span class="cell-title">{{ a.name }}</span><small>{{ a.bank }} ****{{ a.last4 }}</small></td><td>Forma de pago en el sistema contable: {{ a.contable_payment_id }}</td><td>{% if a.active %}<span class="chip ok">Activa</span>{% else %}<span class="chip plain">Inactiva</span>{% endif %}</td></tr>
+  {% empty %}<tr><td><div class="empty">{% icon 'inbox' %}<strong>Aún no hay cuentas receptoras</strong><small>Registre la primera con el formulario de esta página.</small></div></td></tr>{% endfor %}</tbody></table></div>
+</section>
+{{ block.super }}
+{% endblock %}

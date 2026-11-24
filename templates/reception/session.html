@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Recibir {{ invoice.number }}{% endblock %}
+{% block heading %}Recibir mercancía{% endblock %}
+{% block crumbs %}<p class="crumbs"><a href="{% url 'reception' %}">{% icon 'arrow-left' 'sm' %} Por recibir</a></p>{% endblock %}
+{% block content %}
+<section class="card reception-head">
+  <div class="card-body">
+    <div class="detail-head">
+      <div><h2>{{ invoice.supplier.name }}</h2><p class="muted">Factura {{ invoice.number }} · {{ invoice.issue_date|date:"d/m/Y" }}</p></div>
+      <div data-progress>{% include 'reception/_progress.html' %}</div>
+    </div>
+  </div>
+</section>
+
+<section class="card scan-card">
+  <div class="card-body">
+    <form method="post" action="{% url 'reception_scan' session.pk %}" class="scan-form" data-scan-form data-fetch>{% csrf_token %}
+      <label class="scan-label" for="codigo-caja">Escanee cada caja</label>
+      <div class="scan-row">
+        <input class="input scan-input" id="codigo-caja" name="codigo" autocomplete="off" autofocus placeholder="Lector, cámara o código escrito" data-scan-input>
+        <label class="sr-only" for="cajas">Cajas iguales</label>
+        <input class="input scan-boxes" id="cajas" name="cajas" type="number" min="1" max="500" value="1" title="Cajas iguales con este código">
+        <button class="btn btn-primary" type="submit">{% icon 'plus' %}Agregar</button>
+      </div>
+      <button class="btn camera-btn" type="button" data-camera-toggle data-target="#codigo-caja" data-continuous hidden>{% icon 'eye' %}Usar la cámara</button>
+    </form>
+    <div class="camera-box" data-camera-box hidden><video data-camera-video muted playsinline></video><span class="camera-frame" aria-hidden="true"></span><p class="camera-hint" data-camera-hint>Apunte al código de la caja</p></div>
+    <p class="scan-feedback{% if result %} is-{% if result.ok %}ok{% else %}bad{% endif %}{% endif %}" data-scan-feedback role="status" aria-live="polite">{% if result %}{{ result.message }}{% else %}Listo para escanear.{% endif %}</p>
+    <div data-prompt>{% include 'reception/_prompt.html' %}</div>
+  </div>
+</section>
+
+<div data-tally>{% include 'reception/_tally.html' %}</div>
+
+<details class="card manual-card">
+  <summary class="card-head"><div><h2>Agregar a mano</h2><p>Para cajas sin código legible.</p></div>{% icon 'chevron-down' 'sm' %}</summary>
+  <form method="post" action="{% url 'reception_manual' session.pk %}" class="card-body form-grid" data-fetch>{% csrf_token %}
+    <div class="field"><label for="m-linea">Referencia</label><select class="input" id="m-linea" name="linea" required>{% for r in s.rows %}{% if r.missing %}<option value="{{ r.line.pk }}">{{ r.line.product.name }} · faltan {{ r.missing|num }}</option>{% endif %}{% endfor %}</select></div>
+    <div class="field"><label for="m-lote">Lote</label><input class="input" id="m-lote" name="lote" required autocapitalize="characters"></div>
+    <div class="field"><label for="m-vence">Vencimiento</label><input class="input" id="m-vence" name="vence" type="date" required></div>
+    <div class="field"><label for="m-cantidad">Unidades</label><input class="input" id="m-cantidad" name="cantidad" type="number" min="1" value="1" required></div>
+    <div class="form-actions span-all"><button class="btn" type="submit">{% icon 'plus' %}Agregar</button></div>
+  </form>
+</details>
+
+<section class="card confirm-card">
+  <div class="card-head"><div><h2>Confirmar la recepción</h2><p>Se registra la entrada al inventario por lote. Si llegó menos de lo facturado o un lote distinto, explíquelo en la nota.</p></div></div>
+  <form method="post" action="{% url 'reception_confirm' session.pk %}" class="card-body form-grid">{% csrf_token %}{{ token_form.token }}
+    <div class="field"><label for="ubicacion">Ubicación donde se guarda</label><input class="input" id="ubicacion" name="ubicacion" list="ubicaciones" value="{{ session.location }}" required><datalist id="ubicaciones">{% for l in locations %}<option value="{{ l }}">{% endfor %}</datalist></div>
+    <div class="field"><label for="fecha">Fecha de recepción</label><input class="input" id="fecha" name="fecha" type="date" value="{{ today|date:'Y-m-d' }}" max="{{ today|date:'Y-m-d' }}" required></div>
+    <div class="field span-all"><label for="nota">Nota <span class="optional">obligatoria si falta mercancía o cambia el lote</span></label><input class="input" id="nota" name="nota" maxlength="300" placeholder="Ej.: llegan 100 de 150; el proveedor envía el saldo la próxima semana"></div>
+    <div class="form-actions span-all"><button class="btn btn-primary" type="submit">{% icon 'check-circle' %}Confirmar recepción</button></div>
+  </form>
+  <form method="post" action="{% url 'reception_discard' session.pk %}" class="card-body discard-form">{% csrf_token %}<button class="btn btn-ghost btn-sm" type="submit">Descartar esta recepción</button></form>
+</section>
+{% endblock %}
+{% block scripts %}<script src="{% static 'scanner.js' %}" data-zxing="{% static 'vendor/zxing-0.21.3/zxing.min.js' %}" defer></script>{% endblock %}

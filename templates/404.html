@@ -1,0 +1,26 @@
+{% load static %}<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#FFFFFF">
+<title>Página no encontrada · Plataforma inteligente de operaciones</title>
+<link rel="icon" type="image/png" href="{% static 'icono/favicon.png' %}">
+<link rel="stylesheet" href="{% static 'app.css' %}">
+</head>
+<body>
+<main class="error-page">
+  <div class="box ">
+    <div class="brand">
+      <img class="brand-mark" src="{% static 'icono/icono.svg' %}" alt="" width="30" height="30">
+      <span class="brand-text"><span class="brand-name">Plataforma inteligente de operaciones</span><span class="demo-flag">Demostración con datos sintéticos</span></span>
+    </div>
+    <span class="error-code">Error 404</span>
+    <h1>Página no encontrada</h1>
+    <p>La dirección no existe o el registro ya no está disponible. Revise el enlace o búsquelo desde el resumen.</p>
+    <div class="actions"><a class="btn btn-primary" href="/">Ir al resumen</a></div>
+  </div>
+</main>
+</body>
+</html>

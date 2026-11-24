@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+{% block title %}{{ sale.label }}{% endblock %}
+{% block crumbs %}<p class="crumbs"><a href="{% url 'sales' %}">Ventas</a> / <a href="{% url 'party' sale.party_id %}">{{ sale.party.name }}</a></p>{% endblock %}
+{% block heading %}{{ sale.label }}{% endblock %}
+{% block content %}
+{% with s=sale %}
+<section class="card">
+  <div class="card-body">
+    <div class="detail-head">
+      <div>
+        <h2><a href="{% url 'party' s.party_id %}">{{ s.party.name }}</a></h2>
+        <p class="muted">{{ s.party.get_id_type_display }} {{ s.party.identification }} · sucursal {{ s.branch.office }} · {{ s.get_context_display }} · lista {{ s.price_list.name }}</p>
+        {% include 'cartera/_sale_status.html' %}
+      </div>
+      <div class="actions">
+        {% if s.editable %}
+          <a class="btn" href="{% url 'sale_edit' s.pk %}">{% icon 'edit' %}{% if s.status == 'rejected' %}Corregir{% else %}Modificar{% endif %}</a>
+          <details class="confirm"><summary class="btn btn-danger">{% icon 'slash' %}Cancelar venta</summary>
+            <div class="confirm-panel"><form method="post" action="{% url 'sale_cancel' s.pk %}">{% csrf_token %}{{ cancel_form.token }}
+              <label for="cancel-reason">Motivo</label><input class="input" id="cancel-reason" name="reason" maxlength="300" required>
+              <button class="btn btn-danger solid btn-block" type="submit">Cancelar y liberar reservas</button></form></div></details>
+        {% endif %}
+        {% if s.status == 'draft' and can_discount %}<a class="btn" href="{% url 'sale_discount' s.pk %}">{% icon 'percent' %}{% if discount %}Ajustar descuento{% else %}Conceder descuento{% endif %}</a>{% endif %}
+        {% if s.status == 'draft' and discount_request %}<span class="chip warn">Descuento en espera de la dirección</span>
+        {% elif s.status == 'draft' %}
+          {% if can_issue %}
+          <details class="confirm"><summary class="btn btn-primary">{% icon 'check-circle' %}Enviar al sistema contable</summary>
+            <div class="confirm-panel">
+              <p><strong>¿La venta está correcta?</strong> Se reservarán los lotes y el sistema contable simulado le asignará número a la factura. Después solo podrá corregirse con una nota crédito.</p>
+              <form method="post" action="{% url 'sale_issue' s.pk %}">{% csrf_token %}{{ token_form.token }}<button class="btn btn-primary btn-block" type="submit">{% icon 'check' %}Sí, emitir {{ s.total|cop }}</button></form>
+            </div></details>
+          {% else %}<span class="chip info">La envía una persona autorizada</span>{% endif %}
+        {% elif s.status == 'uncertain' or s.status == 'sending' %}
+          {% if can_issue or finance %}<form method="post" action="{% url 'sale_retry' s.pk %}">{% csrf_token %}{{ token_form.token }}<button class="btn btn-primary" type="submit">{% icon 'activity' %}Consultar y reintentar con la misma clave</button></form>{% endif %}
+        {% elif s.status == 'issued' %}
+          {% if s.pdf %}<a class="btn btn-primary" href="{% url 'sale_pdf' s.pk %}" target="_blank" rel="noopener">{% icon 'file-text' %}Ver PDF de la factura</a>{% endif %}
+          <form method="post" action="{% url 'sale_refresh' s.pk %}">{% csrf_token %}{{ token_form.token }}<button class="btn" type="submit">{% icon 'activity' %}Consultar saldo en el sistema contable</button></form>
+        {% endif %}
+      </div>
+    </div>
+    {% if discount_request %}<div class="callout warn">{% icon 'clock' %}<div><p><strong>Descuento de {{ discount_request.amount|cop }} ({{ discount_request.percent }} %) en espera de la dirección.</strong> Lo pidió {{ discount_request.requested_by.display_name }} el {{ discount_request.created_at|date:"d/m/Y H:i" }} porque no le quedaban permisos este mes. Motivo: «{{ discount_request.reason }}». La venta no se envía al sistema contable hasta que la dirección decida.</p>
+      <div class="actions">{% if user.role == 'owner' %}<a class="btn btn-sm btn-primary" href="{% url 'discounts' %}#por-confirmar">Decidir ahora</a>{% endif %}{% if user.pk == discount_request.requested_by_id or user.role == 'owner' %}<form method="post" action="{% url 'discount_withdraw' discount_request.pk %}">{% csrf_token %}<input type="hidden" name="token" value="{% new_token %}"><input type="hidden" name="volver" value="venta"><button class="btn btn-sm btn-ghost" type="submit">Retirar la solicitud</button></form>{% endif %}</div></div></div>
+    {% elif discount %}<div class="callout ok">{% icon 'percent' %}<div><p><strong>Descuento de {{ discount.amount|cop }} ({{ discount.percent }} %)</strong> concedido por {{ discount.applied_by.display_name }}{% if discount.approved_by and discount.approved_by_id != discount.applied_by_id %} y confirmado por {{ discount.approved_by.display_name }}{% elif discount.consumed %} con 1 permiso del mes{% endif %}. Motivo: «{{ discount.reason }}».</p>
+      {% if s.status == 'draft' and can_discount %}<div class="actions"><form method="post" action="{% url 'sale_discount_remove' s.pk %}">{% csrf_token %}<input type="hidden" name="token" value="{% new_token %}"><button class="btn btn-sm btn-ghost" type="submit">Quitar descuento</button></form></div>{% endif %}</div></div>
+    {% elif s.status == 'draft' and not can_discount %}<p class="help">La venta va a precio de lista. Si el cliente tiene derecho a un descuento, pídalo a la administración, que lo concede desde esta venta antes de enviarla al sistema contable.</p>{% endif %}
+    {% if s.status == 'rejected' %}<div class="callout warn">{% icon 'alert-circle' %}<div><p><strong>El sistema contable rechazó la factura.</strong> {{ s.status_detail }}</p><p class="help">Use «Corregir» para ajustar la venta y enviarla de nuevo, o cancélela. Las reservas de inventario se mantienen mientras tanto.</p></div></div>{% endif %}
+    {% if s.status == 'uncertain' %}<div class="callout warn">{% icon 'alert-circle' %}<p><strong>No hubo una respuesta confiable del sistema contable.</strong> {{ s.status_detail }} Use «Consultar y reintentar con la misma clave»: si la factura ya se creó, el sistema contable devuelve la existente y no la duplica.</p></div>{% endif %}
+    {% if s.status == 'sending' and s.status_detail %}<div class="callout">{% icon 'info' %}<p>{{ s.status_detail }}</p></div>{% endif %}
+    <dl class="meta">
+      <div><dt>Fecha</dt><dd>{{ s.issue_date|date:"d/m/Y" }}</dd></div>
+      <div><dt>Pago</dt><dd>{{ s.get_condition_display }}{% if s.payment_name and s.payment_name != s.get_condition_display %} · {{ s.payment_name }}{% endif %}</dd></div>
+      <div><dt>{% if s.condition == 'credit' %}Vencimiento{% else %}Recaudo{% endif %}</dt><dd>{% if s.condition == 'credit' %}{{ s.due_date|date:"d/m/Y" }}{% else %}{{ s.get_cash_method_display }}{% if s.cash_reference %} · {{ s.cash_reference }}{% endif %}{% endif %}</dd></div>
+      <div><dt>Vendedor</dt><dd>{{ seller }}</dd></div>
+      <div><dt>Registró</dt><dd class="light">{{ s.created_by.display_name }} · {{ s.created_at|date:"d/m/Y H:i" }}</dd></div>
+      <div><dt>Envió</dt><dd class="light">{% if s.issued_by %}{{ s.issued_by.display_name }} · {{ s.issued_at|date:"d/m/Y H:i" }}{% else %}—{% endif %}</dd></div>
+      {% if s.purchase_order %}<div><dt>Orden de compra</dt><dd>{{ s.purchase_order }}</dd></div>{% endif %}
+      {% if s.observations %}<div class="span-all"><dt>Observaciones de la factura</dt><dd class="light">{{ s.observations }}</dd></div>{% endif %}
+    </dl>
+  </div>
+</section>
+
+<div class="steps">
+  <div class="step"><span>1 · Envío al sistema contable</span>{% if s.status == 'issued' %}<span class="chip ok">Aceptado</span>{% elif s.status == 'draft' %}<span class="chip">Sin enviar</span>{% elif s.status == 'rejected' %}<span class="chip bad">Rechazado</span>{% elif s.status == 'cancelled' %}<span class="chip plain">Cancelado</span>{% else %}<span class="chip warn">{{ s.get_status_display }}</span>{% endif %}</div>
+  <div class="step"><span>2 · Validación fiscal simulada</span>{% if s.stamp_status == 'Accepted' %}<span class="chip ok">Validada</span>{% elif s.stamp_status %}<span class="chip warn">{{ s.stamp_status }}</span>{% else %}<span class="chip">—</span>{% endif %}</div>
+  <div class="step"><span>3 · Cartera</span>{% if receivable %}{% if receivable.balance > 0 %}<span class="chip warn">Saldo {{ receivable.balance|cop }}</span>{% else %}<span class="chip ok">Pagada</span>{% endif %}{% else %}<span class="chip">—</span>{% endif %}</div>
+</div>
+
+{% if s.contable_id %}<section class="card">
+  <div class="card-head"><div><h2>Factura en el sistema contable</h2><p>Documento del simulador local: no tiene validez fiscal ni sale de la plataforma.</p></div></div>
+  <div class="card-body"><dl class="meta">
+    <div><dt>Número</dt><dd>{{ s.fiscal_name }}</dd></div>
+    <div><dt>Estado de la validación fiscal</dt><dd>{{ s.stamp_status|estado_conector|default:"—" }}</dd></div>
+    <div><dt>Saldo en el sistema contable</dt><dd>{% if s.contable_balance is not None %}{{ s.contable_balance|cop }}<small>consultado {{ s.balance_checked_at|date:"d/m/Y H:i" }}</small>{% else %}—{% endif %}</dd></div>
+    <div><dt>Saldo en la plataforma</dt><dd>{% if receivable %}{{ receivable.balance|cop }}{% if s.contable_balance is not None and s.contable_balance != receivable.balance %} <span class="chip bad">Difiere</span>{% endif %}{% else %}—{% endif %}</dd></div>
+    <div><dt>Correo al cliente</dt><dd class="light">{{ s.mail_status|estado_conector|default:"Sin envío registrado" }}</dd></div>
+    <div><dt>PDF</dt><dd class="light">{% if s.pdf %}SHA-256 {{ s.pdf_sha256|truncatechars:18 }}{% else %}Pendiente de descarga{% endif %}</dd></div>
+    {% if s.cufe %}<div class="span-all"><dt>CUFE</dt><dd class="light"><small>{{ s.cufe }}</small></dd></div>{% endif %}
+  </dl>
+  <details class="confirm"><summary class="btn btn-sm">{% icon 'arrow-up-right' 'sm' %}Registrar envío por correo (simulado)</summary>
+    <div class="confirm-panel"><form method="post" action="{% url 'sale_mail' s.pk %}">{% csrf_token %}{{ mail_form.token }}
+      <label for="{{ mail_form.to.id_for_label }}">Correo</label>{{ mail_form.to }}
+      <p class="help">No se envía ningún correo: el envío queda registrado dentro de la demostración.</p>
+      <button class="btn btn-primary btn-block" type="submit">Registrar envío simulado</button></form></div></details>
+  </div>
+</section>{% endif %}
+
+<section class="card">
+  <div class="card-head"><h2>Referencias</h2></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th scope="col">Referencia</th><th scope="col" class="num">Cantidad</th><th scope="col" class="num">Precio de lista</th><th scope="col" class="num">Precio aplicado</th><th scope="col" class="num">Descuento</th><th scope="col" class="num">IVA</th><th scope="col" class="num">Total</th><th scope="col">Inventario</th></tr></thead>
+    <tbody>{% for l in lines %}<tr>
+      <td><span class="cell-title">{{ l.product.name }}</span><small>Código en el sistema contable: {{ l.product.contable_code|default:l.product.code }}</small></td>
+      <td class="num">{{ l.quantity }}</td>
+      <td class="num">{% if l.list_price is not None %}{{ l.list_price|cop }}{% else %}—{% endif %}</td>
+      <td class="num">{{ l.unit_price|cop }}{% if l.price_changed %}<small><span class="chip warn">{{ l.price_reason }}</span></small>{% endif %}</td>
+      <td class="num">{% if l.discount %}{{ l.discount|cop }}{% else %}—{% endif %}</td>
+      <td class="num">{{ l.tax_rate|pct }}</td>
+      <td class="num strong">{{ l.line_total|cop }}</td>
+      <td>{% for st in l.stock.all %}<small>Lote {{ st.batch.lot }} · {{ st.quantity }} · {% if st.movement and not st.reservation %}entrega previa{% elif st.movement %}descontado{% else %}reservado{% endif %}</small>{% empty %}{% if l.prior_movement %}<small>Entrega previa · lote {{ l.prior_movement.batch.lot }}</small>{% else %}<small class="faint">Se reserva al emitir</small>{% endif %}{% endfor %}</td>
+    </tr>{% endfor %}</tbody>
+    <tfoot><tr><td colspan="6" class="num">Subtotal</td><td class="num">{{ s.subtotal|cop }}</td><td></td></tr>
+      {% if s.tax %}<tr><td colspan="6" class="num">IVA</td><td class="num">{{ s.tax|cop }}</td><td></td></tr>{% endif %}
+      <tr><td colspan="6" class="num strong">Total</td><td class="num strong">{{ s.total|cop }}</td><td></td></tr></tfoot>
+  </table></div>
+</section>
+
+{% if show_beneficiary and s.beneficiary_name or s.internal_note %}<section class="card">
+  <div class="card-head"><div><h2>{% icon 'lock' 'sm' %} Datos internos</h2><p>No aparecen en la factura ni se envían al sistema contable.</p></div></div>
+  <div class="card-body"><dl class="meta">
+    {% if s.beneficiary_name %}<div><dt>Persona que recibe</dt><dd>{{ s.beneficiary_name }}{% if s.beneficiary_document %} · {{ s.beneficiary_document }}{% endif %}{% if s.beneficiary_relation %}<small>{{ s.beneficiary_relation }}</small>{% endif %}</dd></div>{% endif %}
+    {% if s.internal_note %}<div class="span-all"><dt>Nota interna</dt><dd class="light">{{ s.internal_note }}</dd></div>{% endif %}
+  </dl></div>
+</section>{% endif %}
+
+{% if applications %}<section class="card">
+  <div class="card-head"><h2>Pagos aplicados</h2></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th scope="col">Fecha</th><th scope="col">Origen</th><th scope="col" class="num">Valor</th><th scope="col">Recibo</th><th scope="col">Estado</th></tr></thead>
+    <tbody>{% for a in applications %}<tr>
+      <td class="nowrap">{{ a.collection.date|date:"d/m/Y" }}</td>
+      <td>{{ a.get_proposal_display }}<small>{{ a.collection.get_source_display }}{% if a.collection.reference %} · {{ a.collection.reference }}{% endif %}</small></td>
+      <td class="num">{{ a.amount|cop }}</td>
+      <td>{% if a.voucher %}{{ a.voucher.contable_name|default:a.voucher.get_status_display }}{% else %}<span class="faint">Incluido en la factura</span>{% endif %}</td>
+      <td>{% if a.reversed_at %}<span class="chip bad">Revertida</span><small>{{ a.reversal_reason }}</small>{% else %}<span class="chip ok">Vigente</span>{% endif %}</td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+</section>{% endif %}
+
+{% if submissions %}<section class="card">
+  <div class="card-head"><div><h2>Envíos al sistema contable</h2><p>Cada envío conserva una sola clave y la respuesta recibida, para que un reintento no duplique la factura.</p></div></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th scope="col">Creado</th><th scope="col">Clave</th><th scope="col" class="num">Intentos</th><th scope="col">Estado</th><th scope="col">Detalle</th></tr></thead>
+    <tbody>{% for sub in submissions %}<tr>
+      <td class="nowrap">{{ sub.created_at|date:"d/m/Y H:i" }}</td><td><small>{{ sub.idempotency_key }}</small></td><td class="num">{{ sub.attempts }}</td>
+      <td>{{ sub.get_status_display }}</td><td><small>{{ sub.contable_name|default:sub.last_error|default:"—" }}</small></td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+</section>{% endif %}
+{% endwith %}
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block title %}Solicitudes{% endblock %}
+{% block heading %}{% if manager %}Solicitudes recibidas{% else %}Mis solicitudes{% endif %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <p>{% if manager %}Revise la disponibilidad, reserve el lote y confirme la entrega física. El saldo físico solo disminuye al entregar.{% else %}Cada solicitud pasa por tres estados: pendiente, reservada por inventario y entregada.{% endif %}</p>
+  {% if is_requester %}<div class="actions"><a class="btn btn-primary" href="{% url 'new_request' %}">{% icon 'plus' %}Nueva solicitud</a></div>{% endif %}
+</div>
+<section class="card">
+  <div class="toolbar">
+    <div class="tabs">
+      <a href="{% url 'requests' %}" class="{% if not state %}is-active{% endif %}">Todas</a>
+      <a href="?estado=pending" class="{% if state == 'pending' %}is-active{% endif %}">Pendientes</a>
+      <a href="?estado=approved" class="{% if state == 'approved' %}is-active{% endif %}">Reservadas</a>
+      <a href="?estado=delivered" class="{% if state == 'delivered' %}is-active{% endif %}">Entregadas</a>
+      <a href="?estado=rejected" class="{% if state == 'rejected' %}is-active{% endif %}">Rechazadas</a>
+    </div>
+  </div>
+  <div class="table-wrap"><table class="mobile-records">
+    <thead><tr><th scope="col">Fecha</th>{% if manager %}<th scope="col">Solicitante</th>{% endif %}<th scope="col">Referencia</th><th scope="col" class="num">Cantidad</th><th scope="col">Destino</th><th scope="col">Estado</th><th scope="col"><span class="sr-only">Acciones</span></th></tr></thead>
+    <tbody>{% for r in requests %}<tr>
+      <td class="nowrap" data-label="Solicitada el">{{ r.created_at|date:"d/m/Y" }}<small>{{ r.created_at|date:"H:i" }}</small></td>
+      {% if manager %}<td data-label="Solicitante"><span class="cell-title">{{ r.requester.display_name }}</span></td>{% endif %}
+      <td class="record-title" data-label="Referencia"><span class="cell-title">{{ r.product.name }}</span>{% if r.reservation %}<small>Lote {{ r.reservation.batch.lot }}</small>{% endif %}</td>
+      <td class="num" data-label="Cantidad">{{ r.quantity|num }}</td>
+      <td data-label="Destino y fecha">{{ r.purpose }}{% if r.needed_by %}<small>Para el {{ r.needed_by|date:"d/m/Y" }}</small>{% endif %}</td>
+      <td data-label="Estado">{% include '_request_status.html' %}{% if r.resolution %}<small>{{ r.resolution }}</small>{% endif %}</td>
+      <td class="num record-actions" data-label="Acciones"><div class="actions end">
+        {% if manager %}
+          {% if r.status == 'pending' %}<a class="btn btn-sm btn-primary" href="{% url 'approve' r.pk %}">Reservar lote</a><a class="btn btn-sm btn-danger" href="{% url 'resolve_request' r.pk 'reject' %}">Rechazar</a>
+          {% elif r.status == 'approved' %}<a class="btn btn-sm btn-primary" href="{% url 'finish_reservation' r.reservation.pk 'dispatch' %}">Entregar</a><a class="btn btn-sm" href="{% url 'finish_reservation' r.reservation.pk 'release' %}">Liberar</a>{% endif %}
+        {% elif r.status == 'pending' %}<a class="btn btn-sm" href="{% url 'resolve_request' r.pk 'cancel' %}">Cancelar</a>{% endif %}
+      </div></td>
+    </tr>{% empty %}<tr class="empty-row"><td colspan="{% if manager %}7{% else %}6{% endif %}"><div class="empty">{% icon 'clipboard' %}<strong>No hay solicitudes{% if state %} en este estado{% endif %}</strong>Las solicitudes nuevas aparecerán en esta lista; elija «Todas» para ver los demás estados.</div></td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endblock %}

@@ -1,0 +1,17 @@
+<section class="card">
+  <div class="card-head"><div><h2>Lo que se ha contado</h2><p>{{ s.boxes }} registro{{ s.boxes|pluralize }} · se suma por referencia y lote.{% if s.received_lines %} {{ s.received_lines }} referencia{{ s.received_lines|pluralize }} de la factura ya se recibi{{ s.received_lines|pluralize:"ó,eron" }} antes.{% endif %}</p></div></div>
+  <div class="tally-list">
+    {% for r in s.rows %}{% if r.state != 'received' %}<div class="tally-row is-{{ r.state }}">
+      <div class="tally-main">
+        <strong>{{ r.line.product.name }}</strong>
+        <small>{% if r.state == 'received' %}Ya recibida{% else %}Facturadas por recibir: {{ r.pending|num }}{% if r.line.expected_lot %} · lote facturado {{ r.line.expected_lot }}{% endif %}{% if r.line.expected_expiry %} · vence {{ r.line.expected_expiry|date:"d/m/Y" }}{% endif %}{% endif %}</small>
+        {% if r.lots %}<div class="chips">{% for l in r.lots %}<span class="chip {% if l.different %}warn{% else %}plain{% endif %}">Lote {{ l.lot }} · vence {{ l.expiry|date:"d/m/Y" }} · {{ l.quantity|num }}</span>{% endfor %}</div>{% endif %}
+      </div>
+      <div class="tally-count"><strong>{{ r.counted|num }}<small> / {{ r.pending|num }}</small></strong><span class="bar"><span class="bar-fill{% if r.state == 'done' %} is-ok{% endif %}" data-share="{{ r.share }}"></span></span></div>
+    </div>{% endif %}{% endfor %}
+  </div>
+  {% if s.scans %}<details class="chart-table card-body"><summary>Últimos registros</summary>
+    <ul class="scan-log">{% for x in s.scans %}<li><span><strong>{{ x.line.product.name }}</strong> · lote {{ x.lot }} · vence {{ x.expiry|date:"d/m/Y" }} · +{{ x.quantity }}{% if x.serial %}<small>serial {{ x.serial }}</small>{% endif %}<small>{{ x.get_source_display }} · {{ x.created_by.display_name }} · {{ x.created_at|date:"H:i" }}</small></span>
+      <form method="post" action="{% url 'reception_remove' session.pk x.pk %}" data-fetch>{% csrf_token %}<button class="btn btn-sm btn-ghost" type="submit">Quitar</button></form></li>{% endfor %}</ul>
+  </details>{% endif %}
+</section>

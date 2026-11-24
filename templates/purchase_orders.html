@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block title %}Pedidos a proveedores{% endblock %}
+{% block heading %}Pedidos a proveedores{% endblock %}
+{% block content %}
+<div class="page-head">
+  <p>Pedidos preparados desde la reposición o a mano. Un pedido abierto cuenta como unidades en camino; se cierra solo al recibir la factura que cita su número en «Orden de compra», o manualmente.</p>
+  {% if can_act %}<div class="actions"><a class="btn btn-primary" href="{% url 'replenishment' %}#pedidos-sugeridos">{% icon 'plus' %}Preparar desde la reposición</a></div>{% endif %}
+</div>
+<section class="card">
+  <div class="toolbar"><nav class="tabs" aria-label="Estado">{% for key, t in tabs.items %}<a{% if tab == key %} class="is-active" aria-current="page"{% endif %} href="?estado={{ key }}">{{ t.0 }}<span class="count">{{ counts|get_item:key }}</span></a>{% endfor %}</nav></div>
+  <div class="table-wrap"><table class="mobile-records">
+    <thead><tr><th scope="col">Pedido</th><th scope="col">Proveedor</th><th scope="col">Referencias</th><th scope="col" class="num">Unidades</th><th scope="col" class="num">Costo estimado</th><th scope="col">Estado</th><th scope="col">Fecha</th></tr></thead>
+    <tbody>{% for o in rows %}<tr>
+      <td class="record-title" data-label="Pedido"><a class="cell-title" href="{% url 'purchase_order' o.pk %}">{{ o.number }}</a><small>{{ o.get_source_display }}</small></td>
+      <td data-label="Proveedor">{{ o.supplier.name }}</td>
+      <td data-label="Referencias">{% for l in o.lines.all %}{{ l.product.name }} ({{ l.quantity|qty:l.product }}){% if not forloop.last %}, {% endif %}{% endfor %}</td>
+      <td class="num" data-label="Unidades">{{ o.units|num }}</td>
+      <td class="num" data-label="Costo estimado">{% if o.estimated_cost %}{{ o.estimated_cost|cop }}{% else %}<span class="faint">—</span>{% endif %}</td>
+      <td data-label="Estado">{% if o.status == 'draft' %}<span class="chip warn">Mensaje preparado</span>{% elif o.status == 'sent' %}<span class="chip info">Envío simulado registrado</span>{% if o.expected_on %}<small>llega {{ o.expected_on|date:"d/m" }}</small>{% endif %}{% elif o.status == 'received' %}<span class="chip ok">Recibido</span>{% else %}<span class="chip plain">Cancelado</span>{% endif %}</td>
+      <td class="nowrap" data-label="Fecha">{{ o.created_at|date:"d/m/Y" }}<small>{{ o.created_by.display_name }}</small></td>
+    </tr>{% empty %}<tr class="empty-row"><td colspan="7"><div class="empty">{% icon 'truck' %}<strong>No hay pedidos en este estado</strong>{% if tab == 'open' %}La reposición sugiere pedidos cuando una referencia llega a su punto de pedido; prepárelos desde allí.{% endif %}</div></td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endblock %}

@@ -1,0 +1,1 @@
+{% if r.status == 'pending' %}<span class="chip warn">Pendiente</span>{% elif r.status == 'approved' %}<span class="chip info">Reservada</span>{% elif r.status == 'delivered' %}<span class="chip ok">Entregada</span>{% elif r.status == 'rejected' %}<span class="chip bad">Rechazada</span>{% else %}<span class="chip">{{ r.get_status_display }}</span>{% endif %}

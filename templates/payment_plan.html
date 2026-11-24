@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block crumbs %}<p class="crumbs"><a href="{% url 'payables' %}?proveedor={{ supplier.pk }}">{% icon 'arrow-left' 'sm' %} Cuentas por pagar</a></p>{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="card-head"><div><h2>{% if mode == 'pagar' %}Registrar un pago ya realizado{% else %}Programar un pago{% endif %}</h2>
+    <p>{% if mode == 'pagar' %}El pago queda confirmado con su referencia o soporte. Después se concilia con el extracto del banco.{% else %}Un pago programado no reduce el saldo: solo registra la intención de pagar. Confírmelo con el soporte cuando el banco lo ejecute.{% endif %}</p></div>
+    <form method="get"><input type="hidden" name="facturas" value="{{ ids }}"><input type="hidden" name="modo" value="{{ mode }}">
+      <label class="sr-only" for="recalc">Fecha para calcular el descuento</label><input class="input" id="recalc" type="date" name="fecha" value="{{ on|date:'Y-m-d' }}">
+      <button class="btn btn-sm" type="submit">Recalcular a esa fecha</button></form>
+  </div>
+  {% include '_form_errors.html' %}
+  <form method="post" enctype="multipart/form-data" novalidate>{% csrf_token %}
+    {% for f in form.hidden_fields %}{{ f }}{% endfor %}
+    <input type="hidden" name="mode" value="{{ mode }}">
+    {% for inv in invoices %}<input type="hidden" name="factura" value="{{ inv.pk }}">{% endfor %}
+    {% include '_payment_rows.html' %}
+    <div class="card-body">
+      <p class="help">El descuento se calcula con las condiciones fijadas al validar cada factura y con la fecha indicada. Si el proveedor acepta un descuento mayor, escriba el soporte de esa aceptación.</p>
+      <div class="form-grid three">
+        {% include '_field.html' with f=form.on %}{% include '_field.html' with f=form.method %}
+        {% if mode == 'pagar' %}{% include '_field.html' with f=form.reference %}{% endif %}
+      </div>
+      <div class="form-grid">{% include '_field.html' with f=form.note %}{% if mode == 'pagar' %}{% include '_field.html' with f=form.files %}{% endif %}</div>
+      <div class="form-actions"><a class="btn btn-ghost" href="{% url 'payables' %}">Cancelar</a>
+        <button class="btn btn-primary" type="submit">{% icon 'check' %}{% if mode == 'pagar' %}Registrar pago{% else %}Programar pago{% endif %}</button></div>
+    </div>
+  </form>
+</section>
+{% endblock %}

@@ -1,0 +1,1 @@
+{% if a.status == 'executed' %}<span class="chip ok">Ejecutada</span>{% elif a.status == 'rejected' %}<span class="chip plain">Descartada</span>{% elif a.status == 'failed' %}<span class="chip bad">No se pudo ejecutar</span>{% elif a.status == 'proposed' %}<span class="chip warn">Por decidir</span>{% else %}<span class="chip info">Ya no aplica</span>{% endif %}

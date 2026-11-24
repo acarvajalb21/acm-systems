@@ -1,0 +1,16 @@
+{% comment %}Mapa de flujo compacto del Resumen. Usa las mismas estaciones de feria.flow.stations(user); cada una abre el mapa en esa etapa.{% endcomment %}
+<nav class="flujo-compacto" aria-label="Mapa de flujo: de la solicitud al cobro">
+  <ol class="flujo-compacto-linea">
+    {% for st in stations %}<li class="flujo-paso-{{ st.order }}">
+      <a class="flujo-mini{% if st.state %} is-{{ st.state }}{% endif %}{% if not st.allowed %} is-locked{% endif %}" href="{% url 'flow_map' %}?etapa={{ st.key }}" aria-label="{{ st.summary }} Abrir en el mapa de flujo.">
+        {% include 'feria/flujo_escena.html' with pulso=False %}
+        <span class="flujo-mini-texto">
+          <span class="flujo-mini-nombre">{{ st.label }}{% if st.allowed %}<span class="chip {{ st.chip }}">{{ st.state_label }}</span>{% endif %}</span>
+          {% if st.allowed %}<strong{% if st.long %} class="is-largo"{% endif %}>{{ st.value }}</strong><small>{{ st.fact }}</small>
+          {% else %}<small>{% icon 'lock' 'sm' %}Sin acceso</small>{% endif %}
+        </span>
+      </a>
+    </li>{% endfor %}
+  </ol>
+  <div class="flujo-compacto-pie"><span>Conteos de hoy, {{ today|date:"d/m/Y" }}, con los registros que su perfil puede abrir.</span><a class="text-link" href="{% url 'flow_map' %}">Abrir el mapa de flujo {% icon 'arrow-right' 'sm' %}</a></div>
+</nav>

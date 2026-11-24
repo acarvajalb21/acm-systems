@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block title %}Cargar factura de proveedor{% endblock %}
+{% block crumbs %}<p class="crumbs"><a href="{% url 'invoices' %}">{% icon 'arrow-left' 'sm' %} Facturas</a></p>{% endblock %}
+{% block heading %}Cargar factura de proveedor{% endblock %}
+{% block content %}
+<div class="grid-2">
+  <section class="card">
+    <div class="card-body">
+      {% include '_form_errors.html' %}
+      <form method="post" enctype="multipart/form-data" novalidate>{% csrf_token %}
+        <div class="dropzone">
+          {% icon 'upload' %}
+          <strong>Seleccione la factura en PDF, XML o ZIP</strong>
+          <span class="muted">Máximo 20 MB. Se preparan los datos para que los revise antes de guardar.</span>
+          {{ form.file }}
+          {% for e in form.file.errors %}<small class="field-error">{{ e }}</small>{% endfor %}
+        </div>
+        <div class="form-actions"><a class="btn btn-ghost" href="{% url 'invoice_new' %}">Registrar manualmente</a><button class="btn btn-primary" type="submit">{% icon 'arrow-right' %}Leer factura</button></div>
+      </form>
+    </div>
+  </section>
+  <section class="card">
+    <div class="card-head"><h2>Cómo funciona</h2></div>
+    <div class="card-body">
+      <ol class="timeline">
+        <li><strong>Lectura del documento</strong><small>PDF con el formato «Factura de demostración», XML de factura electrónica o ZIP con el XML. En el PDF, los campos que no se puedan leer quedan pendientes de completar. Otros formatos de PDF se registran a mano.</small></li>
+        <li><strong>Revisión contra el original</strong><small>Confirme proveedor, fechas, cada producto, el total y las condiciones de pago. Asigne la referencia del catálogo. El documento queda adjunto al guardar; la lectura por sí sola no registra una compra.</small></li>
+        <li><strong>Validación</strong><small>Fija las condiciones de pago de esa factura y habilita la recepción de la mercancía.</small></li>
+        <li><strong>Recepción y pago</strong><small>Inventario recibe por lotes; contabilidad registra el pago y el descuento obtenido.</small></li>
+      </ol>
+      <p class="help">Este módulo recibe compras a proveedores. Las facturas de venta de {{ company_name }} y las notas crédito se gestionan por separado. Los documentos de la demostración son sintéticos y no tienen validez fiscal.</p>
+    </div>
+  </section>
+</div>
+{% endblock %}

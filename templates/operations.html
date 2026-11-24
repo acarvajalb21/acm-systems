@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+{% block title %}Registrar operación{% endblock %}
+{% block heading %}Registrar operación{% endblock %}
+{% block content %}
+<div class="page-head operation-intro">
+  <p>{% if is_requester %}Pida las referencias que necesita su área y siga la entrega.{% elif manager %}Elija el movimiento que va a registrar. Cada opción pide solo los datos y el soporte de esa operación.{% elif user.role == 'billing' %}Prepare las ventas y envíelas al sistema contable simulado, con su pago y sus observaciones.{% elif is_reception %}Reciba la mercancía de los proveedores escaneando el QR de la factura y cada caja.{% else %}Registre las facturas de proveedores y gestione sus pagos.{% endif %}</p>
+  <span class="chip plain">Perfil: {{ user.get_role_display }}</span>
+</div>
+
+{% if receiver %}
+<section class="operation-section" aria-labelledby="reception-title">
+  <h2 class="section-title" id="reception-title">Llegó mercancía</h2>
+  <p class="section-subtitle">Escanee el QR de la factura y luego cada caja: la referencia, el lote y el vencimiento se registran solos.</p>
+  <div class="operation-choices">
+    <a class="operation-choice" href="{% url 'reception' %}">
+      <span class="choice-icon">{% icon 'truck' %}</span>
+      <div class="choice-copy"><h3>Recibir con escáner</h3><p>Cuente las cajas con el lector o la cámara del celular y confirme la entrada al inventario.</p><small>Tenga a mano: la factura del proveedor y las cajas.</small></div>
+      <span class="choice-action" aria-hidden="true">{% icon 'arrow-right' %}</span>
+    </a>
+  </div>
+</section>
+{% endif %}
+
+{% if is_requester %}
+<section class="operation-section" aria-labelledby="requests-title">
+  <h2 class="section-title" id="requests-title">Solicitudes</h2>
+  <p class="section-subtitle">Inventario revisa la disponibilidad, aparta el lote y confirma la entrega.</p>
+  <div class="operation-choices">
+    <a class="operation-choice" href="{% url 'new_request' %}">
+      <span class="choice-icon">{% icon 'plus' %}</span>
+      <div class="choice-copy"><h3>Solicitar una referencia</h3><p>Indique la referencia, la cantidad, la fecha y el destino de las unidades.</p><small>Tenga a mano: referencia, cantidad y destino (área, pedido u orden de trabajo).</small></div>
+      <span class="choice-action" aria-hidden="true">{% icon 'arrow-right' %}</span>
+    </a>
+    <a class="operation-choice" href="{% url 'requests' %}">
+      <span class="choice-icon">{% icon 'clipboard' %}</span>
+      <div class="choice-copy"><h3>Seguir mis solicitudes</h3><p>Consulte qué está pendiente, reservado o entregado.</p><small>Revise el estado antes de solicitar de nuevo.</small></div>
+      <span class="choice-action" aria-hidden="true">{% icon 'arrow-right' %}</span>
+    </a>
+  </div>
+</section>
+{% endif %}
+
+{% if manager %}
+<section class="operation-section" aria-labelledby="inventory-title">
+  <h2 class="section-title" id="inventory-title">Inventario y entregas</h2>
+  <p class="section-subtitle">Registre lo que ocurre con las existencias y conserve la trazabilidad por lote.</p>
+  <div class="operation-choices">
+    <a class="operation-choice" href="{% url 'exit_stock' %}">
+      <span class="choice-icon">{% icon 'arrow-up-right' %}</span>
+      <div class="choice-copy"><h3>Registrar una salida</h3><p>Descuente las unidades entregadas fuera de una solicitud, con su documento o destino.</p><small>Tenga a mano: lote, cantidad y soporte.</small></div>
+      <span class="choice-action" aria-hidden="true">{% icon 'arrow-right' %}</span>
+    </a>
+    <a class="operation-choice" href="{% url 'requests' %}?estado=pending">
+      <span class="choice-icon">{% icon 'clipboard' %}</span>
+      <div class="choice-copy"><h3>Atender solicitudes</h3><p>Revise las solicitudes recibidas y reserve un lote disponible para la entrega.</p><small>Empiece por las pendientes.</small></div>
+      <span class="choice-action" aria-hidden="true">{% icon 'arrow-right' %}</span>
+    </a>
+    <a class="operation-choice" href="{% url 'reserve' %}">
+      <span class="choice-icon">{% icon 'bookmark' %}</span>
+      <div class="choice-copy"><h3>Reservar unidades</h3><p>Aparte un lote para un área, un pedido o una orden de trabajo y confirme después su entrega.</p><small>Tenga a mano: lote, cantidad y destino.</small></div>
+      <span class="choice-action" aria-hidden="true">{% icon 'arrow-right' %}</span>
+    </a>
+    <a class="operation-choice" href="{% url 'invoices' %}?vista=recibir">
+      <span class="choice-icon">{% icon 'truck' %}</span>
+      <div class="choice-copy"><h3>Recibir una compra</h3><p>Elija la factura validada y confirme lo recibido por lote, vencimiento y ubicación.</p><small>Tenga a mano: factura y mercancía recibida.</small></div>
+      <span class="choice-action" aria-hidden="true">{% icon 'arrow-right' %}</span>
+    </a>
+    <a class="operation-choice" href="{% url 'adjust_in' %}">
+      <span class="choice-icon">{% icon 'layers' %}</span>
+      <div class="choice-copy"><h3>Cargar saldo o ajuste positivo</h3><p>Registre el conteo de apertura o una diferencia positiva del inventario físico.</p><small>Tenga a mano: conteo, lote y vencimiento.</small></div>
+      <span class="choice-action" aria-hidden="true">{% icon 'arrow-right' %}</span>
+    </a>
+    <a class="operation-choice" href="{% url 'adjust_out' %}">
+      <span class="choice-icon">{% icon 'trending-down' %}</span>
+      <div class="choice-copy"><h3>Registrar baja o ajuste negativo</h3><p>Documente unidades perdidas, vencidas o una diferencia negativa de conteo, con su justificación.</p><small>Tenga a mano: lote, cantidad y motivo.</small></div>
+      <span class="choice-action" aria-hidden="true">{% icon 'arrow-right' %}</span>
+    </a>
+  </div>
+</section>
+{% endif %}
+
+{% if documents %}
+<section class="operation-section" aria-labelledby="purchases-title">
+  <h2 class="section-title" id="purchases-title">Compras y documentos</h2>
+  <p class="section-subtitle">Registre la factura, revise sus condiciones y continúe con la recepción{% if finance %} o el pago{% endif %}.</p>
+  <div class="operation-choices">
+    <a class="operation-choice" href="{% url 'invoice_import' %}">
+      <span class="choice-icon">{% icon 'upload' %}</span>
+      <div class="choice-copy"><h3>Cargar factura de proveedor</h3><p>Suba el archivo de la factura para revisar sus datos y productos antes de guardar.</p><small>Tenga a mano: el archivo del proveedor.</small></div>
+      <span class="choice-action" aria-hidden="true">{% icon 'arrow-right' %}</span>
+    </a>
+    <a class="operation-choice" href="{% url 'invoice_new' %}">
+      <span class="choice-icon">{% icon 'file-text' %}</span>
+      <div class="choice-copy"><h3>Registrar factura a mano</h3><p>Ingrese el proveedor, las referencias y los valores de la compra con sus soportes.</p><small>Tenga a mano: factura y condiciones de compra.</small></div>
+      <span class="choice-action" aria-hidden="true">{% icon 'arrow-right' %}</span>
+    </a>
+    <a class="operation-choice" href="{% url 'invoices' %}?vista=revisar">
+      <span class="choice-icon">{% icon 'check-circle' %}</span>
+      <div class="choice-copy"><h3>Revisar y validar facturas</h3><p>Compare cada factura con su soporte y confirme sus condiciones antes de continuar.</p><small>Empiece por las pendientes de revisión.</small></div>
+      <span class="choice-action" aria-hidden="true">{% icon 'arrow-right' %}</span>
+    </a>
+    {% if finance %}
+    <a class="operation-choice" href="{% url 'payables' %}">
+      <span class="choice-icon">{% icon 'credit-card' %}</span>
+      <div class="choice-copy"><h3>Registrar un pago</h3><p>Elija la factura y revise el vencimiento y el descuento por pronto pago disponible.</p><small>Tenga a mano: fecha, medio y referencia del pago.</small></div>
+      <span class="choice-action" aria-hidden="true">{% icon 'arrow-right' %}</span>
+    </a>
+    {% endif %}
+  </div>
+</section>
+{% endif %}
+
+{% if sales_role %}
+<section class="operation-section" aria-labelledby="sales-title">
+  <h2 class="section-title" id="sales-title">Ventas y cartera</h2>
+  <p class="section-subtitle">Prepare la venta en la plataforma y envíela al sistema contable simulado{% if finance %}; después identifique los pagos que llegan al banco simulado{% endif %}.</p>
+  <div class="operation-choices">
+    <a class="operation-choice" href="{% url 'sale_new' %}">
+      <span class="choice-icon">{% icon 'file-plus' %}</span>
+      <div class="choice-copy"><h3>Nueva venta</h3><p>Elija el cliente y la lista de precios, complete el pago y revise antes de enviar.</p><small>Tenga a mano: documento del cliente, referencias y medio de pago.</small></div>
+      <span class="choice-action" aria-hidden="true">{% icon 'arrow-right' %}</span>
+    </a>
+    {% if finance %}<a class="operation-choice" href="{% url 'bank_import' %}">
+      <span class="choice-icon">{% icon 'upload' %}</span>
+      <div class="choice-copy"><h3>Importar extracto bancario</h3><p>Cargue el archivo de ejemplo del banco, revise los movimientos nuevos y confirme a quién pertenece cada pago.</p><small>Los movimientos repetidos no se duplican.</small></div>
+      <span class="choice-action" aria-hidden="true">{% icon 'arrow-right' %}</span>
+    </a>
+    <a class="operation-choice" href="{% url 'bank' %}?estado=pending">
+      <span class="choice-icon">{% icon 'inbox' %}</span>
+      <div class="choice-copy"><h3>Identificar pagos</h3><p>Revise las sugerencias, aplique el dinero a las facturas y registre el recibo de caja.</p><small>Los casos dudosos quedan por identificar.</small></div>
+      <span class="choice-action" aria-hidden="true">{% icon 'arrow-right' %}</span>
+    </a>{% endif %}
+  </div>
+</section>
+{% endif %}
+
+{% if administrator %}
+<section class="operation-section" aria-labelledby="team-title">
+  <h2 class="section-title" id="team-title">Equipo y acceso</h2>
+  <div class="operation-choices">
+    <a class="operation-choice" href="{% url 'new_user' %}">
+      <span class="choice-icon">{% icon 'users' %}</span>
+      <div class="choice-copy"><h3>Crear una cuenta</h3><p>Dé acceso a una persona y asígnele el perfil que corresponde a sus funciones.</p><small>Tenga a mano: nombre, usuario y perfil.</small></div>
+      <span class="choice-action" aria-hidden="true">{% icon 'arrow-right' %}</span>
+    </a>
+  </div>
+</section>
+{% endif %}
+
+<aside class="card operation-help" aria-labelledby="operation-help-title">
+  <span class="choice-icon">{% icon 'shield' %}</span>
+  <div>
+    <h2 id="operation-help-title">Antes de confirmar</h2>
+    <p>{% if is_requester %}Escriba como destino el área, el pedido o la orden de trabajo. No incluya datos personales.{% elif manager %}Revise la referencia, el lote y la cantidad. Si la entrega ya está reservada, confírmela desde <a href="{% url 'reservations' %}">Reservas y entregas</a>. Cada salida queda en la trazabilidad del lote.{% else %}Compare el proveedor, las fechas y los valores con el soporte. En el detalle de cada factura puede seguir sus documentos y pagos.{% endif %}</p>
+  </div>
+</aside>
+{% endblock %}

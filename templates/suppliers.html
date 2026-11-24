@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block title %}Proveedores{% endblock %}
+{% block heading %}Proveedores{% endblock %}
+{% block content %}
+<div class="page-head">
+  <p>Proveedores con su plazo de pago y sus descuentos por pronto pago.</p>
+  <div class="actions"><a class="btn btn-primary" href="{% url 'new_supplier' %}">{% icon 'plus' %}Nuevo proveedor</a></div>
+</div>
+<section class="card">
+  <div class="toolbar"><div class="search">{% icon 'search' %}<input class="input" type="search" placeholder="Buscar proveedor o NIT" data-filter="#tabla-proveedores" aria-label="Buscar proveedor"></div></div>
+  <div class="table-wrap"><table id="tabla-proveedores" class="mobile-records">
+    <thead><tr><th scope="col">Proveedor</th><th scope="col">Contacto</th><th scope="col" class="num">Plazo</th><th scope="col">Pronto pago</th><th scope="col" class="num">Facturas</th><th scope="col">Estado</th>{% if finance %}<th scope="col"><span class="sr-only">Acciones</span></th>{% endif %}</tr></thead>
+    <tbody>{% for s in suppliers %}<tr>
+      <td class="record-title" data-label="Proveedor">{% if finance %}<a class="cell-title" href="{% url 'supplier_account' s.pk %}">{{ s.name }}</a>{% else %}<span class="cell-title">{{ s.name }}</span>{% endif %}<small>NIT {{ s.nit_display }}</small></td>
+      <td data-label="Contacto">{{ s.email|default:"—" }}{% if s.phone %}<small>{{ s.phone }}</small>{% endif %}</td>
+      <td class="num" data-label="Plazo de pago">{{ s.payment_days }} días</td>
+      <td data-label="Pronto pago">{% with tiers=s.tiers.all %}{% if tiers %}<span class="chips">{% for t in tiers %}<span class="chip plain info">{{ t.percent|pct }} a {{ t.days }} días</span>{% endfor %}</span>{% else %}<span class="faint">Sin descuento</span>{% endif %}{% endwith %}</td>
+      <td class="num" data-label="Facturas"><a href="{% url 'invoices' %}?q={{ s.nit }}">{{ s.n }}</a></td>
+      <td data-label="Estado">{% if s.active %}<span class="chip ok">Activo</span>{% else %}<span class="chip">Inactivo</span>{% endif %}</td>
+      {% if finance %}<td class="num record-actions" data-label="Acciones"><a class="btn btn-sm btn-ghost" href="{% url 'supplier_account' s.pk %}">{% icon 'credit-card' 'sm' %}Cuenta</a><a class="btn btn-sm btn-ghost" href="{% url 'edit_supplier' s.pk %}">{% icon 'sliders' 'sm' %}Condiciones</a></td>{% endif %}
+    </tr>{% empty %}<tr class="empty-row"><td colspan="{% if finance %}7{% else %}6{% endif %}"><div class="empty">{% icon 'truck' %}<strong>Sin proveedores</strong>Se crean solos al cargar una factura; también puede registrarlos con «Nuevo proveedor».</div></td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endblock %}

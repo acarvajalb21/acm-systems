@@ -1,0 +1,7 @@
+{% comment %}
+Acceso compacto al copiloto para cualquier pantalla. Usa solo clases del sistema.
+  {% include 'copiloto/_acceso.html' %}
+  {% include 'copiloto/_acceso.html' with tipo='referencia' id=product.pk %}      tipo: referencia | cliente | ingreso
+  {% include 'copiloto/_acceso.html' with contexto='ingreso:42' etiqueta='Preguntar por este ingreso' %}
+El copiloto valida el contexto en el servidor: un tipo desconocido o un registro que el perfil no puede consultar se ignora.
+{% endcomment %}{% url 'copilot' as copiloto_url %}{% if copiloto_url %}<a class="btn btn-sm" href="{{ copiloto_url }}{% if contexto %}?contexto={{ contexto|urlencode }}{% elif tipo and id %}?contexto={{ tipo|urlencode }}%3A{{ id|urlencode }}{% endif %}">{% icon 'activity' 'sm' %} {{ etiqueta|default:'Preguntar al copiloto' }}</a>{% endif %}

@@ -1,0 +1,19 @@
+{% load static %}<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="{{ theme_color }}">
+<title>Sin conexión · {{ app_name }}</title>
+<link rel="stylesheet" href="{% static 'app.css' %}">
+</head>
+<body class="offline-page">
+<main class="offline-box">
+  <img src="{% static icon %}" alt="" width="96" height="96">
+  <h1>Sin conexión</h1>
+  <p>Este dispositivo no alcanza el equipo donde corre la plataforma. Cuando vuelva la conexión, abrirá normalmente.</p>
+  <a class="btn btn-primary" href="/">Intentar de nuevo</a>
+  <p class="muted">Demostración con datos sintéticos</p>
+</main>
+</body>
+</html>

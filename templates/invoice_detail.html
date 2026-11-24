@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+{% block title %}Factura {{ invoice.number }}{% endblock %}
+{% block crumbs %}<p class="crumbs"><a href="{% url 'invoices' %}">Facturas</a> / {{ invoice.supplier.name }}</p>{% endblock %}
+{% block heading %}Factura {{ invoice.number }}{% endblock %}
+{% block content %}
+{% with inv=invoice %}
+<section class="card">
+  <div class="card-body">
+    <div class="detail-head">
+      <div>
+        <h2>{{ inv.supplier.name }}</h2>
+        <p class="muted">NIT {{ inv.supplier.nit_display }} · {{ inv.get_source_display }}</p>
+        {% include '_invoice_status.html' %}
+      </div>
+      <div class="actions">
+        {% if inv.review == 'pending' %}
+          <a class="btn" href="{% url 'invoice_edit' inv.pk %}">{% icon 'edit' %}Corregir</a>
+          <a class="btn btn-danger" href="{% url 'invoice_void' inv.pk %}">{% icon 'slash' %}Anular</a>
+          <details class="confirm">
+            <summary class="btn btn-primary">{% icon 'check-circle' %}Validar factura</summary>
+            <div class="confirm-panel">
+              <p><strong>¿Los datos coinciden con la factura del proveedor?</strong> Al validarla se fijan las condiciones de pago, se habilita la recepción y ya no podrá corregirse.</p>
+              <form method="post" action="{% url 'invoice_validate' inv.pk %}">{% csrf_token %}{{ token_form.token }}<button class="btn btn-primary btn-block" type="submit">{% icon 'check' %}Sí, validar factura</button></form>
+            </div>
+          </details>
+        {% elif inv.review == 'validated' %}
+          {% if can_receive and inv.reception != 'complete' and inv.reception != 'not_required' %}<a class="btn btn-primary" href="{% url 'invoice_receive' inv.pk %}">{% icon 'truck' %}Recibir mercancía</a>{% endif %}
+          {% if can_pay and not inv.paid %}<a class="btn btn-primary" href="{% url 'invoice_pay' inv.pk %}">{% icon 'credit-card' %}Pagar</a>{% endif %}
+          {% if not inv.receipts.exists and not inv.paid %}<a class="btn btn-danger" href="{% url 'invoice_void' inv.pk %}">{% icon 'slash' %}Anular</a>{% endif %}
+        {% endif %}
+      </div>
+    </div>
+    {% if inv.review == 'void' %}<div class="callout warn">{% icon 'slash' %}<p><strong>Factura anulada.</strong> {{ inv.void_reason }}</p></div>{% endif %}
+    <dl class="meta">
+      <div><dt>Emisión</dt><dd>{{ inv.issue_date|date:"d/m/Y" }}</dd></div>
+      <div><dt>Vencimiento</dt><dd>{{ inv.due_date|date:"d/m/Y" }}</dd></div>
+      <div><dt>Orden de compra</dt><dd>{{ inv.order_number|default:"—" }}</dd></div>
+      <div><dt>Fecha del pedido</dt><dd>{{ inv.ordered_on|date:"d/m/Y"|default:"—" }}</dd></div>
+      <div><dt>Registró</dt><dd class="light">{{ inv.created_by.display_name }} · {{ inv.created_at|date:"d/m/Y" }}</dd></div>
+      <div><dt>Validó</dt><dd class="light">{% if inv.validated_by %}{{ inv.validated_by.display_name }} · {{ inv.validated_at|date:"d/m/Y" }}{% else %}—{% endif %}</dd></div>
+      {% if inv.cufe %}<div class="span-all"><dt>CUFE</dt><dd class="light"><small>{{ inv.cufe }}</small></dd></div>{% endif %}
+    </dl>
+    {% if inv.notes %}<p class="muted">{{ inv.notes }}</p>{% endif %}
+  </div>
+</section>
+
+{% if inv.review != 'void' %}
+<div class="steps">
+  <div class="step"><span>1 · Revisión documental</span>{% if inv.review == 'validated' %}<span class="chip ok">Validada</span>{% else %}<span class="chip warn">Por revisar</span>{% endif %}</div>
+  <div class="step"><span>2 · Recepción física</span>{% if inv.reception == 'not_required' %}<span class="chip plain">Saldo de apertura: sin recepción</span>{% elif inv.reception == 'complete' %}<span class="chip ok">Completa · {{ inv.received_units|num }} unidades</span>{% elif inv.reception == 'partial' %}<span class="chip info">{{ inv.received_units|num }} de {{ inv.expected_units|num }}</span>{% else %}<span class="chip">Pendiente · {{ inv.expected_units|num }} unidades</span>{% endif %}</div>
+  <div class="step"><span>3 · Pago</span>{% if inv.paid %}<span class="chip ok">Pagada{% if inv.last_payment %} el {{ inv.last_payment.paid_on|date:"d/m/Y" }}{% endif %}</span>{% elif inv.payment_state == 'overdue' %}<span class="chip bad">Vencida · saldo {{ inv.balance|cop }}</span>{% elif inv.payment_state == 'partial' %}<span class="chip info">Saldo {{ inv.balance|cop }}</span>{% else %}<span class="chip warn">Por pagar</span>{% endif %}</div>
+</div>
+{% endif %}
+
+<section class="card">
+      <div class="card-head"><h2>Productos</h2></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th scope="col">Referencia</th><th scope="col" class="num">Facturado</th><th scope="col" class="num">Recibido</th><th scope="col" class="num">Valor unitario</th><th scope="col" class="num">Descuento</th><th scope="col" class="num">IVA</th><th scope="col" class="num">Total</th></tr></thead>
+        <tbody>{% for l in inv.lines.all %}<tr>
+          <td><span class="cell-title">{{ l.product.name }}</span><small>{{ l.description }}{% if l.supplier_code %} · cód. {{ l.supplier_code }}{% endif %}{% if l.expected_lot %} · lote {{ l.expected_lot }}{% endif %}{% if l.expected_expiry %} · vence {{ l.expected_expiry|date:"d/m/Y" }}{% endif %}</small></td>
+          <td class="num">{{ l.quantity|num }}</td>
+          <td class="num">{% if l.pending %}<span class="strong">{{ l.received|num }}</span><small>faltan {{ l.pending|num }}</small>{% else %}<span class="chip ok plain">{{ l.received|num }}</span>{% endif %}</td>
+          <td class="num">{% if l.unit_price %}{{ l.unit_price|cop }}{% else %}<span class="chip plain info">Bonificado</span>{% endif %}</td>
+          <td class="num">{{ l.discount|cop }}</td>
+          <td class="num">{{ l.tax_rate|pct }}</td>
+          <td class="num strong">{{ l.line_total|cop }}</td>
+        </tr>{% endfor %}</tbody>
+      </table></div>
+      <div class="card-body"><div class="totals">
+        <div><span>Subtotal</span><strong>{{ inv.subtotal|cop }}</strong></div>
+        {% if inv.global_discount %}<div><span>Descuento global</span><strong>−{{ inv.global_discount|cop }}</strong></div>{% endif %}
+        <div><span>IVA</span><strong>{{ inv.tax|cop }}</strong></div>
+        {% if inv.retention %}<div><span>Retenciones</span><strong>−{{ inv.retention|cop }}</strong></div>{% endif %}
+        <div class="grand"><span>Total</span><strong>{{ inv.total|cop }}</strong></div>
+      </div></div>
+    </section>
+
+<div class="grid-2">
+  <div class="stack">
+    <section class="card">
+      <div class="card-head"><h2>Recepciones</h2>{% if can_receive and inv.review == 'validated' and inv.reception != 'complete' %}<a class="btn btn-sm btn-primary" href="{% url 'invoice_receive' inv.pk %}">{% icon 'truck' 'sm' %}Recibir</a>{% endif %}</div>
+      <div class="table-wrap"><table>
+        <thead><tr><th scope="col">Llegada</th><th scope="col">Referencia / lote</th><th scope="col">Ubicación</th><th scope="col">Vence</th><th scope="col" class="num">Cantidad</th></tr></thead>
+        <tbody>{% for rc in receipts %}{% for m in rc.movements.all %}<tr>
+          <td class="nowrap">{{ rc.received_on|date:"d/m/Y" }}<small>{{ rc.actor.display_name }}</small></td>
+          <td><a class="cell-title" href="{% url 'trace' m.batch_id %}">{{ m.batch.product.name }}</a><small>Lote {{ m.batch.lot }}</small></td>
+          <td>{{ m.batch.location }}</td>
+          <td class="nowrap">{{ m.batch.expiry|date:"d/m/Y" }}</td>
+          <td class="num strong">+{{ m.quantity|num }}</td>
+        </tr>{% endfor %}{% if rc.note %}<tr><td colspan="5"><small>Observación: {{ rc.note }}</small></td></tr>{% endif %}{% empty %}<tr><td colspan="5"><div class="empty">{% icon 'truck' %}<strong>Sin recepciones</strong>{% if inv.review == 'pending' %}Valide la factura para habilitar la recepción.{% endif %}</div></td></tr>{% endfor %}</tbody>
+      </table></div>
+    </section>
+  </div>
+
+  <div class="stack">
+    <section class="card">
+      <div class="card-head"><h2>Pago</h2></div>
+      <div class="card-body">
+        {% if inv.document_terms %}
+          <p><strong>Plazo de esta factura:</strong> {{ inv.document_terms.payment_days }} días desde la emisión.</p>
+          {% if inv.document_terms.tiers %}<ul>{% for days, percent in inv.document_terms.tiers %}<li>{{ percent|pct }} si paga dentro de {{ days }} días.</li>{% endfor %}</ul>
+          <p class="help">Base: {% if inv.document_terms.base == 'total' %}total de la factura{% else %}subtotal antes de IVA{% endif %}.</p>{% endif %}
+        {% endif %}
+        <dl class="meta">
+          <div><dt>Total</dt><dd>{{ inv.total|cop }}</dd></div>
+          <div><dt>Pagado</dt><dd>{{ inv.amount_paid|cop }}</dd></div>
+          <div><dt>Descuentos tomados</dt><dd>{{ inv.discount_taken|cop }}</dd></div>
+          <div><dt>Notas crédito y ajustes</dt><dd>{{ inv.credit_applied|cop }}{% if inv.adjustments_total %}<small>ajustes {{ inv.adjustments_total|cop }}</small>{% endif %}</dd></div>
+          <div><dt>Saldo</dt><dd class="strong">{{ inv.balance|cop }}</dd></div>
+        </dl>
+        {% if allocations %}<div class="table-wrap"><table>
+          <thead><tr><th scope="col">Pago</th><th scope="col" class="num">Valor</th><th scope="col" class="num">Descuento</th><th scope="col">Estado</th></tr></thead>
+          <tbody>{% for a in allocations %}<tr><td>{% if can_pay %}<a href="{% url 'supplier_payment' a.payment_id %}">{% endif %}{{ a.payment.paid_on|date:"d/m/Y"|default:a.payment.scheduled_on|date:"d/m/Y" }}{% if can_pay %}</a>{% endif %}<small>{{ a.payment.get_method_display }}{% if a.payment.reference %} · {{ a.payment.reference }}{% endif %}</small></td>
+            <td class="num">{{ a.amount|cop }}</td><td class="num">{% if a.discount %}{{ a.discount|cop }}<small>{{ a.discount_percent|pct }}{% if a.lost_discount %} · no aprovechado {{ a.lost_discount|cop }}{% endif %}</small>{% else %}—{% endif %}</td>
+            <td>{% if a.payment.status == 'scheduled' %}<span class="chip warn">Programado</span>{% elif a.payment.status == 'cancelled' %}<span class="chip plain">Anulado</span>{% elif a.payment.status == 'reconciled' %}<span class="chip ok">Conciliado</span>{% else %}<span class="chip info">Confirmado</span>{% endif %}</td></tr>{% endfor %}</tbody>
+        </table></div>{% endif %}
+        {% for c in credits %}<p class="help">Nota crédito {{ c.credit_note.number }}: {{ c.amount|cop }}</p>{% endfor %}
+        {% for a in adjustments %}<p class="help">{{ a.get_kind_display }}: {{ a.amount|cop }} · {{ a.reference }}</p>{% endfor %}
+        {% if inv.paid %}<div class="callout ok">{% icon 'check-circle' %}<p>Factura pagada{% if inv.last_payment %} · último pago el {{ inv.last_payment.paid_on|date:"d/m/Y" }}{% endif %}.</p></div>
+        {% elif offer %}
+          {% if offer.amount %}<div class="callout ok">{% icon 'percent' %}<p>Si paga hoy obtiene <strong>{{ offer.percent|pct }}</strong> de descuento: <strong>{{ offer.amount|cop }}</strong>. Vigente hasta el {{ offer.deadline|date:"d/m/Y" }}.</p></div>
+          {% elif offer.tiers %}<div class="callout warn">{% icon 'clock' %}<p>El plazo de descuento por pronto pago ya cerró.</p></div>
+          {% else %}<p class="muted">El proveedor no tiene descuento por pronto pago configurado.</p>{% endif %}
+          <div class="totals"><div><span>Valor a pagar hoy</span><strong>{{ offer.due|cop }}</strong></div></div>
+          {% if can_pay %}<div class="actions"><a class="btn btn-primary" href="{% url 'invoice_pay' inv.pk %}">{% icon 'credit-card' %}Pagar el saldo</a>
+            <a class="btn" href="{% url 'payment_new' %}?facturas={{ inv.pk }}&modo=programar">{% icon 'calendar' %}Programar o abonar</a>
+            <a class="btn btn-ghost" href="{% url 'credit_note_new' inv.supplier_id %}?factura={{ inv.pk }}">Nota crédito</a>
+            <a class="btn btn-ghost" href="{% url 'adjustment_new' inv.pk %}">Ajuste</a></div>{% endif %}
+        {% elif inv.review == 'pending' %}<p class="muted">Al validar se fijan las condiciones de pago {% if inv.document_terms %}revisadas para esta factura{% else %}del proveedor{% endif %}.</p>
+        {% else %}<p class="muted">Esta factura no tiene pagos registrados.</p>{% endif %}
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2>Soportes</h2></div>
+      <div class="card-body">
+        <ul class="file-list">{% for f in inv.files.all %}<li><a href="{% url 'invoice_file' f.pk %}" target="_blank" rel="noopener"><span class="file-ext">{{ f.name|slice:"-3:"|upper }}</span><span>{{ f.name|truncatechars:42 }}</span><small>{{ f.size|filesizeformat }}</small></a></li>{% empty %}<li class="muted">Sin documentos adjuntos. Elija un archivo y use «Adjuntar» para agregarlo.</li>{% endfor %}</ul>
+        {% if inv.review != 'void' %}<form method="post" action="{% url 'invoice_attach' inv.pk %}" enctype="multipart/form-data">{% csrf_token %}{{ attach_form.token }}
+          <div class="field">{{ attach_form.files }}</div>
+          <div class="form-actions"><button class="btn btn-sm" type="submit">{% icon 'paperclip' 'sm' %}Adjuntar</button></div>
+        </form>{% endif %}
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2>Historial</h2></div>
+      <div class="card-body"><ol class="timeline">{% for e in history %}<li><strong>{{ e.event }}</strong><small>{{ e.created_at|date:"d/m/Y H:i" }} · {{ e.actor.display_name|default:"Sistema" }}</small></li>{% empty %}<li><small>Sin eventos.</small></li>{% endfor %}</ol></div>
+    </section>
+  </div>
+</div>
+{% endwith %}
+{% endblock %}

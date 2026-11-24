@@ -1,0 +1,47 @@
+<div class="debt-panel" role="tabpanel" id="panel-{{ key }}" aria-labelledby="tab-{{ key }}" data-panel>
+  {% if d.count %}
+  <dl class="debt-facts">
+    <div><dt>Saldo</dt><dd>{{ d.total|pesos }}</dd></div>
+    <div><dt>Vencido</dt><dd class="{% if d.overdue %}is-bad{% endif %}">{{ d.overdue|pesos }}</dd></div>
+    <div><dt>Documentos</dt><dd>{{ d.count }} · {{ d.entities_count }} {{ who }}</dd></div>
+    <div><dt>Más antiguo</dt><dd>{% if d.oldest > 0 %}{{ d.oldest }} días vencido{% else %}Nada vencido{% endif %}</dd></div>
+  </dl>
+
+  <svg class="debt-summary" viewBox="0 0 100 10" preserveAspectRatio="none" role="img" aria-label="Saldo por antigüedad">
+    {% for s in d.summary %}{% if s.amount %}<rect class="sum-seg age-{{ s.key }}" x="{{ s.x }}" y="0" width="{{ s.w }}" height="10" data-tip="{{ s.tip }}" data-bucket-key="{{ s.key }}"></rect>{% endif %}{% endfor %}
+  </svg>
+  <div class="bucket-filters" role="group" aria-label="Filtrar por antigüedad">
+    <button class="bucket-btn" type="button" data-bucket="all" aria-pressed="true">Todos</button>
+    {% for s in d.summary %}<button class="bucket-btn age-{{ s.key }}" type="button" data-bucket="{{ s.key }}" aria-pressed="false"{% if not s.amount %} disabled{% endif %}><span class="swatch age-{{ s.key }}" aria-hidden="true"></span>{{ s.label }}<strong>{{ s.amount|pesos }}</strong></button>{% endfor %}
+  </div>
+  <p class="filter-status" role="status" data-filter-status></p>
+
+  <div class="debt-list">
+    <div class="debt-list-head" aria-hidden="true"><span>{{ noun }}</span><span>Saldo por antigüedad</span><span>Total</span></div>
+    {% for e in d.entities %}<details class="debt-entity" data-buckets="{{ e.buckets }}">
+      <summary data-tip="{{ e.tip }}" data-tip-focus>
+        <span class="debt-name">{{ e.name }}<small>{{ e.docs|length }} documento{{ e.docs|length|pluralize }}{% if e.late %} · <span class="is-bad">vencido {{ e.late|pesos }}</span>{% endif %}</small></span>
+        <svg class="debt-bar" viewBox="0 0 100 10" preserveAspectRatio="none" role="img" aria-label="Saldo de {{ e.name }} por antigüedad">{% for s in e.segments %}<rect class="seg age-{{ s.key }}" x="{{ s.x }}" y="0" width="{{ s.w }}" height="10" data-tip="{{ s.tip }}"></rect>{% endfor %}</svg>
+        <strong class="debt-total">{{ e.total|pesos }}</strong>
+        <span class="debt-chevron" aria-hidden="true">{% icon 'chevron-down' 'sm' %}</span>
+      </summary>
+      <div class="debt-docs">
+        <div class="table-wrap"><table class="mobile-records">
+          <thead><tr><th scope="col">Documento</th><th scope="col">Emisión</th><th scope="col">Vence</th><th scope="col">Estado</th><th scope="col" class="num">Saldo</th></tr></thead>
+          <tbody>{% for doc in e.docs %}<tr data-doc-bucket="{{ doc.bucket }}">
+            <td class="record-title" data-label="Documento"><a class="cell-title" href="{{ doc.url }}">{{ doc.label }}</a></td>
+            <td class="nowrap" data-label="Emisión">{{ doc.issue|date:"d/m/Y" }}</td>
+            <td class="nowrap" data-label="Vence">{{ doc.due|date:"d/m/Y" }}</td>
+            <td data-label="Estado">{% if doc.late > 0 %}<span class="chip bad">Vencido hace {{ doc.late }} día{{ doc.late|pluralize }}</span>{% elif doc.late == 0 %}<span class="chip warn">Vence hoy</span>{% else %}<span class="chip ok">Vence en {{ doc.late|cut:"-" }} día{{ doc.late|cut:"-"|pluralize }}</span>{% endif %}</td>
+            <td class="num strong" data-label="Saldo">{{ doc.balance|cop }}</td>
+          </tr>{% endfor %}</tbody>
+        </table></div>
+        <a class="text-link" href="{{ e.url }}">Ver la cuenta completa {% icon 'arrow-right' 'sm' %}</a>
+      </div>
+    </details>{% endfor %}
+    {% if d.more %}<p class="help debt-more">Y {{ d.more }} {{ who }} más con saldos menores · <a href="{% url more_url %}">ver todos</a></p>{% endif %}
+  </div>
+  {% else %}
+  <div class="empty">{% icon 'check-circle' %}<strong>No hay saldos pendientes</strong>{% if key == 'ar' %}Ningún cliente tiene facturas por pagar.{% else %}No hay facturas de proveedores por pagar.{% endif %}</div>
+  {% endif %}
+</div>

@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% block crumbs %}<p class="crumbs"><a href="{% if sale %}{% url 'sale' sale.pk %}{% else %}{% url 'sales' %}{% endif %}">{% icon 'arrow-left' 'sm' %} {% if sale %}{{ sale.label }}{% else %}Ventas{% endif %}</a></p>{% endblock %}
+{% block content %}
+<form method="post" novalidate>{% csrf_token %}
+  {% for f in form.hidden_fields %}{{ f }}{% endfor %}
+  {% if form.errors %}<div class="form-errors" role="alert" tabindex="-1">{% icon 'alert-circle' %}<div><strong>Revise la venta antes de guardar.</strong><ul>
+    {% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}
+    {% for f in form %}{% for e in f.errors %}<li><a href="#{{ f.id_for_label }}">{{ f.label }}: {{ e }}</a></li>{% endfor %}{% endfor %}
+  </ul></div></div>{% endif %}
+  {% if lines.non_form_errors %}<div class="form-errors" role="alert">{% icon 'alert-circle' %}<ul>{% for e in lines.non_form_errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+  {% if sale.status == 'rejected' %}<div class="callout warn">{% icon 'alert-circle' %}<p><strong>El sistema contable rechazó el envío anterior.</strong> {{ sale.status_detail }} Al guardar se liberan las reservas de inventario y la venta vuelve a borrador.</p></div>{% endif %}
+
+  <section class="card">
+    <div class="card-head"><div><h2>1 · Cliente y contexto</h2><p>Un mismo cliente puede comprar en mostrador, como empresa o como contratista: elija el contexto de esta venta.</p></div>
+      <a class="btn btn-sm" href="{% url 'party_new' %}">{% icon 'plus' 'sm' %}Nuevo cliente</a></div>
+    <div class="card-body"><div class="form-grid three">
+      {% include '_field.html' with f=form.party %}{% include '_field.html' with f=form.context %}{% include '_field.html' with f=form.price_list %}
+      {% include '_field.html' with f=form.issue_date %}{% include '_field.html' with f=form.seller_id %}
+    </div></div>
+  </section>
+
+  <section class="card" data-formset="lines">
+    <div class="card-head"><div><h2>2 · Referencias</h2><p>Deje el precio vacío para usar el de la lista. Un precio mayor exige un motivo y la venta la emite contabilidad. Los descuentos no se escriben aquí: la administración los concede desde la venta guardada.</p></div><button class="btn" type="button" data-add-row>{% icon 'plus' %}Agregar línea</button></div>
+    {{ lines.management_form }}
+    <div class="table-wrap card-body"><table class="lines">
+      <thead><tr><th scope="col">Referencia</th><th scope="col">Cantidad</th><th scope="col">Precio unitario</th><th scope="col">Motivo del precio</th><th scope="col">IVA</th><th scope="col">Inventario</th><th scope="col"><span class="sr-only">Quitar</span></th></tr></thead>
+      <tbody>{% for lf in lines %}{% include 'cartera/_sale_line.html' %}{% endfor %}</tbody>
+    </table></div>
+    <template>{% with lf=lines.empty_form %}{% include 'cartera/_sale_line.html' %}{% endwith %}</template>
+    <p class="help card-body">Inventario: si no elige nada, se reservan los lotes vigentes que vencen primero y se descuentan cuando el sistema contable acepta la factura. Si las unidades ya se entregaron, elija la entrega registrada para no descontarlas dos veces.</p>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><div><h2>3 · Pago</h2><p>La condición y la forma de pago son obligatorias. En una venta de contado se registra el dinero recibido con su referencia; si el dinero aún no ha llegado, registre la venta a crédito.</p></div></div>
+    <div class="card-body"><div class="form-grid three">
+      {% include '_field.html' with f=form.condition %}{% include '_field.html' with f=form.payment_type_id %}{% include '_field.html' with f=form.due_date %}
+      {% include '_field.html' with f=form.cash_method %}{% include '_field.html' with f=form.cash_reference %}
+    </div></div>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><div><h2>4 · Observaciones según el tipo de venta</h2><p>Empresas: orden de compra si el cliente la exige. Mostrador: datos de quien recibe el pedido cuando paga otra persona.</p></div></div>
+    <div class="card-body">
+      <div class="form-grid">{% include '_field.html' with f=form.purchase_order %}{% include '_field.html' with f=form.observations %}</div>
+      <p class="fieldset-title">{% icon 'lock' 'sm' %} Datos internos · no aparecen en la factura ni se envían al sistema contable</p>
+      <div class="form-grid three">{% include '_field.html' with f=form.beneficiary_name %}{% include '_field.html' with f=form.beneficiary_document %}{% include '_field.html' with f=form.beneficiary_relation %}</div>
+      <div class="form-grid">{% include '_field.html' with f=form.internal_note %}</div>
+    </div>
+  </section>
+
+  <div class="form-actions">
+    <a class="btn btn-ghost" href="{% if sale %}{% url 'sale' sale.pk %}{% else %}{% url 'sales' %}{% endif %}">Cancelar</a>
+    <button class="btn btn-primary" type="submit">{% icon 'check' %}Guardar borrador</button>
+  </div>
+</form>
+
+{% if reference %}<section class="card">
+  <div class="card-head"><div><h2>Precios vigentes</h2><p>Precios de las listas activas en la fecha de hoy, para consulta.</p></div><a class="btn btn-sm btn-ghost" href="{% url 'prices' %}">Ver listas</a></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th scope="col">Referencia</th>{% for pl in lists %}<th scope="col" class="num">{{ pl.name }}</th>{% endfor %}</tr></thead>
+    <tbody>{% for product, cells in reference %}<tr><td>{{ product.name }}</td>{% for c in cells %}<td class="num">{% if c is not None %}{{ c|cop }}{% else %}<span class="faint">—</span>{% endif %}</td>{% endfor %}</tr>{% endfor %}</tbody>
+  </table></div>
+</section>{% endif %}
+{% endblock %}

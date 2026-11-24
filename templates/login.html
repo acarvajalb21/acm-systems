@@ -1,0 +1,16 @@
+{% extends 'auth_base.html' %}
+{% block card %}
+<h2>Iniciar sesión</h2>
+<p>Ingrese con uno de los usuarios de la demostración. Cada perfil ve las tareas que le corresponden.</p>
+{% if limited %}<div class="form-errors" role="alert">{% icon 'alert-circle' %}<span>Hubo demasiados intentos fallidos. Espere 15 minutos y vuelva a intentarlo.</span></div>{% endif %}
+{% if form.errors and not limited %}<div class="form-errors" role="alert">{% icon 'alert-circle' %}<span>El usuario o la contraseña no coinciden. Revise las mayúsculas y vuelva a intentarlo.</span></div>{% endif %}
+<form method="post" novalidate aria-label="Iniciar sesión">{% csrf_token %}
+  {% for f in form.hidden_fields %}{{ f }}{% endfor %}
+  {% for f in form.visible_fields %}{% include '_field.html' with f=f %}{% endfor %}
+  <input type="hidden" name="next" value="{{ next }}">
+  <button class="btn btn-primary btn-block" type="submit">Iniciar sesión</button>
+</form>
+<div class="auth-links"><a href="{% url 'forgot' %}">¿Olvidó su contraseña?</a><a href="{% url 'landing' %}">Acerca del proyecto</a></div>
+{% block demo_profiles %}{% if demo_profiles %}<section class="auth-profiles" aria-labelledby="perfiles-titulo">{% include 'feria/_perfiles.html' %}</section>{% endif %}{% endblock %}
+<p class="auth-note">{% icon 'info' 'sm' %}<span>Todo lo que registre aquí queda en este equipo. Banco, sistema contable, correo y mensajería son simulados.</span></p>
+{% endblock %}

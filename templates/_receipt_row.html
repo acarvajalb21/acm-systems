@@ -1,0 +1,8 @@
+<tr>
+  <td class="w-wide record-title" data-label="Producto">{{ rf.line }}{% for field in rf %}{% for e in field.errors %}<small class="field-error">{{ field.label }}: {{ e }}</small>{% endfor %}{% endfor %}{% for e in rf.non_field_errors %}<small class="field-error">{{ e }}</small>{% endfor %}</td>
+  <td class="w-xs" data-label="Cantidad recibida">{{ rf.quantity }}</td>
+  <td class="w-md" data-label="Lote">{{ rf.lot }}</td>
+  <td class="w-md" data-label="Vencimiento">{{ rf.expiry }}</td>
+  <td class="w-md" data-label="Ubicación">{{ rf.location }}</td>
+  <td class="del record-actions" data-label="Quitar lote">{{ rf.DELETE }}<label for="{{ rf.DELETE.id_for_label }}" title="Quitar lote" aria-label="Quitar lote">{% icon 'trash' %}</label></td>
+</tr>

@@ -1,0 +1,9 @@
+{% if f.is_hidden %}{{ f }}{% else %}
+<div class="field{% if f.field.widget.input_type == 'checkbox' %} field-check{% endif %}{% if f.errors %} has-error{% endif %}{% if wide %} span-all{% endif %}" data-field-name="{{ f.name }}"{% if f.errors %} data-field-errors{% endif %}>
+  {% if f.field.widget.input_type == 'checkbox' %}{{ f }}{% endif %}
+  <label for="{{ f.id_for_label }}">{{ f.label }}{% if not f.field.required and f.field.widget.input_type != 'checkbox' %} <span class="optional">opcional</span>{% endif %}</label>
+  {% if f.field.widget.input_type != 'checkbox' %}{{ f }}{% endif %}
+  {% if f.help_text %}<small class="help" id="{{ f.auto_id }}_helptext">{{ f.help_text }}</small>{% endif %}
+  {% if f.errors %}<div id="{{ f.auto_id }}_error">{% for e in f.errors %}<small class="field-error">{{ e }}</small>{% endfor %}</div>{% endif %}
+</div>
+{% endif %}

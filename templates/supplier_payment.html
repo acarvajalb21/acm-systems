@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% block crumbs %}<p class="crumbs"><a href="{% url 'payables' %}?vista=pagos">Cuentas por pagar</a> / <a href="{% url 'supplier_account' p.supplier_id %}">{{ p.supplier.name }}</a></p>{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="card-body">
+    <div class="detail-head">
+      <div>
+        <h2>{{ p.amount|cop }} · {{ p.supplier.name }}</h2>
+        <p class="muted">{% if p.paid_on %}Pagado el {{ p.paid_on|date:"d/m/Y" }}{% else %}Programado para el {{ p.scheduled_on|date:"d/m/Y" }}{% endif %} · {{ p.get_method_display }}{% if p.reference %} · {{ p.reference }}{% endif %}</p>
+        {% if p.status == 'scheduled' %}<span class="chip warn">Programado · aún no reduce el saldo</span>{% elif p.status == 'confirmed' %}<span class="chip info">Confirmado · falta conciliar con el banco</span>{% elif p.status == 'reconciled' %}<span class="chip ok">Conciliado con el banco</span>{% else %}<span class="chip plain">Anulado</span>{% endif %}
+      </div>
+      <div class="actions">
+        {% if p.status == 'scheduled' or p.status == 'confirmed' %}<details class="confirm"><summary class="btn btn-danger">{% icon 'slash' %}Anular</summary>
+          <div class="confirm-panel"><form method="post" action="{% url 'payment_cancel' p.pk %}">{% csrf_token %}{{ reason_form.token }}
+            <label for="cancel-reason">Motivo</label><input class="input" id="cancel-reason" name="reason" maxlength="300" required>
+            <button class="btn btn-danger solid btn-block" type="submit">Anular pago</button></form></div></details>{% endif %}
+      </div>
+    </div>
+    {% if p.cancel_reason %}<div class="callout warn">{% icon 'slash' %}<p><strong>Anulado.</strong> {{ p.cancel_reason }}</p></div>{% endif %}
+    <dl class="meta">
+      <div><dt>Registró</dt><dd class="light">{{ p.created_by.display_name }} · {{ p.created_at|date:"d/m/Y H:i" }}</dd></div>
+      <div><dt>Confirmó</dt><dd class="light">{% if p.confirmed_by %}{{ p.confirmed_by.display_name }} · {{ p.confirmed_at|date:"d/m/Y H:i" }}{% else %}—{% endif %}</dd></div>
+      <div><dt>Egreso en el sistema contable</dt><dd>{{ p.contable_receipt|default:"Sin vincular" }}</dd></div>
+      <div><dt>Movimiento bancario</dt><dd>{% if bank %}<a href="{% url 'bank_txn' bank.pk %}">{{ bank.date|date:"d/m/Y" }} · {{ bank.amount|cop }}</a>{% else %}—{% endif %}</dd></div>
+      {% if p.note %}<div class="span-all"><dt>Observaciones</dt><dd class="light">{{ p.note }}</dd></div>{% endif %}
+    </dl>
+  </div>
+</section>
+
+{% if p.status == 'scheduled' %}
+<section class="card">
+  <div class="card-head"><div><h2>Confirmar con el soporte del banco</h2><p>Indique la fecha en que se hizo el pago: el descuento se recalcula con ella. Si el pago salió después del plazo del descuento, el descuento baja y queda saldo.</p></div>
+    <form method="get"><label class="sr-only" for="recalc">Fecha real del pago</label><input class="input" id="recalc" type="date" name="fecha" value="{{ on|date:'Y-m-d' }}"><button class="btn btn-sm" type="submit">Recalcular</button></form></div>
+  {% include '_form_errors.html' %}
+  <form method="post" enctype="multipart/form-data" novalidate>{% csrf_token %}{% for f in form.hidden_fields %}{{ f }}{% endfor %}<input type="hidden" name="action" value="confirm">
+    {% include '_payment_rows.html' %}
+    <div class="card-body">
+      <div class="form-grid three">{% include '_field.html' with f=form.on %}{% include '_field.html' with f=form.method %}{% include '_field.html' with f=form.reference %}</div>
+      <div class="form-grid">{% include '_field.html' with f=form.files %}{% include '_field.html' with f=form.note %}</div>
+      <div class="form-actions"><button class="btn btn-primary" type="submit">{% icon 'check' %}Confirmar pago</button></div>
+    </div>
+  </form>
+</section>
+{% else %}
+<section class="card">
+  <div class="card-head"><h2>Facturas cubiertas</h2></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th scope="col">Factura</th><th scope="col" class="num">Pagado</th><th scope="col" class="num">Descuento</th><th scope="col" class="num">No aprovechado</th><th scope="col">Soporte del descuento</th><th scope="col" class="num">Saldo actual</th></tr></thead>
+    <tbody>{% for a in allocations %}<tr>
+      <td><a class="cell-title" href="{% url 'invoice' a.invoice_id %}">{{ a.invoice.number }}</a>{% if a.days_elapsed is not None %}<small>Día {{ a.days_elapsed }} desde la emisión</small>{% endif %}</td>
+      <td class="num">{{ a.amount|cop }}</td><td class="num">{% if a.discount %}{{ a.discount|cop }}<small>{{ a.discount_percent|pct }}</small>{% else %}—{% endif %}</td>
+      <td class="num">{% if a.lost_discount %}{{ a.lost_discount|cop }}{% else %}—{% endif %}</td><td><small>{{ a.discount_note|default:"—" }}</small></td>
+      <td class="num">{% for inv in invoices %}{% if inv.pk == a.invoice_id %}{{ inv.balance_due|cop }}{% endif %}{% endfor %}</td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endif %}
+
+{% if p.status == 'confirmed' %}<div class="grid-2">
+<section class="card">
+  <div class="card-head"><div><h2>Conciliar con el extracto</h2><p>Salidas del banco por el mismo valor, sin conciliar, cercanas a la fecha del pago.</p></div></div>
+  <div class="table-wrap"><table><tbody>{% for t in candidates %}<tr><td>{{ t.date|date:"d/m/Y" }}<small>{{ t.description }}</small></td><td class="num">{{ t.amount|cop }}</td>
+    <td class="num"><form method="post" action="{% url 'payment_reconcile' p.pk %}">{% csrf_token %}{{ token_form.token }}<input type="hidden" name="transaction" value="{{ t.pk }}"><button class="btn btn-sm btn-primary" type="submit">Conciliar</button></form></td></tr>
+  {% empty %}<tr><td><div class="empty">{% icon 'inbox' %}<strong>Sin salidas coincidentes</strong><small>Cargue el extracto en la sección Banco y vuelva a esta pantalla.</small></div></td></tr>{% endfor %}</tbody></table></div>
+</section>
+<section class="card">
+  <div class="card-head"><div><h2>Egreso en el sistema contable</h2><p>El egreso se registra en el sistema contable (simulado); aquí solo se vincula su número.</p></div></div>
+  <div class="card-body"><form method="post" action="{% url 'payment_contable' p.pk %}">{% csrf_token %}{{ text_form.token }}
+    <label for="ce">Número del comprobante de egreso</label><input class="input" id="ce" name="text" maxlength="40" value="{{ p.contable_receipt }}" placeholder="CE-123">
+    <div class="form-actions"><button class="btn" type="submit">Vincular</button></div></form></div>
+</section>
+</div>{% endif %}
+
+{% if p.files.exists %}<section class="card">
+  <div class="card-head"><h2>Soportes</h2></div>
+  <div class="table-wrap"><table><tbody>{% for f in p.files.all %}<tr><td><a href="{% url 'payment_file' f.pk %}" target="_blank" rel="noopener">{{ f.name }}</a><small>{{ f.uploaded_by.display_name }} · {{ f.uploaded_at|date:"d/m/Y H:i" }}</small></td><td class="num"><small>{{ f.size|filesizeformat }}</small></td></tr>{% endfor %}</tbody></table></div>
+</section>{% endif %}
+{% endblock %}

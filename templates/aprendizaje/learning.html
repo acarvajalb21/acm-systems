@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Lo aprendido{% endblock %}
+{% block heading %}Lo aprendido{% endblock %}
+{% block estilos %}<link rel="stylesheet" href="{% static 'modulos/pronosticos.css' %}">{% endblock %}
+{% block content %}
+<div class="page-head">
+  <p>Qué han aprendido los tres modelos de la plataforma con los datos registrados y qué tan bien les ha ido cuando se les ha puesto a prueba. Todo se calcula aquí, con datos sintéticos: muestra cómo funcionan, no su eficacia en una operación real.</p>
+  <div class="actions"><a class="btn" href="{% url 'methodology' %}">{% icon 'info' %}Metodología</a>{% if manager %}<a class="btn btn-ghost" href="{% url 'replenishment' %}">{% icon 'package' %}Reposición</a>{% endif %}</div>
+</div>
+
+{% if manager %}
+<section class="card">
+  <div class="card-head"><div><h2>Abastecimiento: cuánto va a salir de cada referencia</h2>
+    <p>Para cada referencia se comparan varias formas de pronosticar con una parte de su historial y se usa la que menos se equivocó. Después se revisa en las últimas semanas, que no se usaron para elegir.</p></div>
+    <span class="chip plain">Método estadístico o modelo entrenado</span></div>
+  <div class="card-body">
+    <div class="kpis compact">
+      <div class="kpi"><span class="kpi-icon">{% icon 'layers' 'lg' %}</span><span class="kpi-body"><span class="kpi-label">Con historial para elegir</span><span class="kpi-value">{{ enough }} de {{ plans|length }}</span><span class="kpi-sub">Referencias con {{ min_weeks }} semanas utilizables o más</span></span></div>
+      <div class="kpi"><span class="kpi-icon">{% icon 'activity' 'lg' %}</span><span class="kpi-body"><span class="kpi-label">Frente al promedio simple</span>
+        <span class="kpi-value">{% if rep.comparison.chosen.test_rel is not None %}{{ rep.comparison.chosen.test_rel|floatformat:2 }}{% else %}—{% endif %}</span>
+        <span class="kpi-sub">{% if rep.comparison.chosen.test_rel is not None %}Error en la prueba dividido por el del promedio (menos de 1 = se equivocó menos){% else %}Se mide cuando haya referencias con historial suficiente{% endif %}</span></span></div>
+      <div class="kpi"><span class="kpi-icon">{% icon 'check-circle' 'lg' %}</span><span class="kpi-body"><span class="kpi-label">Intervalo del 80 %</span>
+        <span class="kpi-value">{% if rep.coverage.h.n %}{{ rep.coverage.h.inside }} de {{ rep.coverage.h.n }}{% else %}—{% endif %}</span>
+        <span class="kpi-sub">{% if rep.coverage.h.n %}Veces que lo observado cayó dentro en la prueba ({{ rep.coverage.h.share|floatformat:0 }} %; se espera cerca de 80 %){% else %}Sin pronósticos de prueba todavía{% endif %}</span></span></div>
+      <div class="kpi"><span class="kpi-icon">{% icon 'calendar' 'lg' %}</span><span class="kpi-body"><span class="kpi-label">Pronósticos guardados</span>
+        <span class="kpi-value">{% if acc.n %}{{ acc.mae|floatformat:1 }}{% else %}—{% endif %}</span>
+        <span class="kpi-sub">{% if acc.n %}Unidades de error medio en {{ acc.n }} semana{{ acc.n|pluralize }} cerrada{{ acc.n|pluralize }}{% if acc.interval_n %} · {{ acc.inside }} de {{ acc.interval_n }} dentro del intervalo{% endif %}{% else %}Se comparan con lo que salió al cerrar cada semana{% endif %}</span></span></div>
+    </div>
+    {% if methods %}<p class="muted pron-note">Formas de pronosticar en uso: {% for label, n in methods %}{{ label }} ({{ n }}){% if not forloop.last %}; {% endif %}{% endfor %}.
+      {% if rep.comparison.ridge %}{% if rep.trained_chosen %}El modelo entrenado se usa en {{ rep.trained_chosen }} referencia{{ rep.trained_chosen|pluralize }}; en las demás ganó un método sencillo.{% else %}El modelo entrenado no ganó en ninguna referencia: se usan los métodos sencillos.{% endif %}{% endif %}</p>{% endif %}
+    {% if rep.stockout_weeks or rep.unmet_units %}<p class="muted pron-note">Lo que salió no es toda la demanda: {{ rep.stockout_weeks }} semana{{ rep.stockout_weeks|pluralize }} sin existencias quedaron fuera del cálculo y hay {{ rep.unmet_units }} unidades de solicitudes rechazadas registradas aparte.</p>{% endif %}
+  </div>
+  <div class="table-wrap"><table class="mobile-records">
+    <thead><tr><th scope="col">Referencia</th><th scope="col">Cómo se pronostica</th><th scope="col" class="num">Semanas utilizables</th><th scope="col" class="num">Esperado la próxima semana</th><th scope="col" class="num">Error en la prueba</th><th scope="col">Pronósticos guardados</th></tr></thead>
+    <tbody>{% for pl in plans %}<tr>
+      <td class="record-title" data-label="Referencia"><a class="cell-title" href="{% url 'forecast' pl.product.pk %}">{{ pl.product.name }}</a></td>
+      <td data-label="Cómo se pronostica">{{ pl.label }}{% if not pl.enough %}<small>Historial insuficiente: respaldo provisional</small>{% elif pl.kind == 'entrenado' %}<small>Modelo entrenado</small>{% endif %}</td>
+      <td class="num" data-label="Semanas utilizables">{{ pl.weeks }}{% if pl.stockout_weeks %}<small>{{ pl.stockout_weeks }} sin existencias, fuera</small>{% endif %}</td>
+      <td class="num" data-label="Esperado la próxima semana">{{ pl.forecast_week|floatformat:1 }}{% if pl.interval_week %}<small>{{ pl.interval_week.low|floatformat:1 }} a {{ pl.interval_week.high|floatformat:1 }}{% if pl.interval_week.kind == 'aproximado' %} (aprox.){% endif %}</small>{% endif %}</td>
+      <td class="num" data-label="Error en la prueba">{% if pl.test %}{{ pl.test.mae|floatformat:1 }}<small>{% if pl.test.wape_defined %}{{ pl.test.wape|floatformat:0 }} % de lo que salió{% else %}relativo no definido (sin salidas){% endif %} · n = {{ pl.test.n }}</small>{% else %}<span class="muted">sin medir</span>{% endif %}</td>
+      <td data-label="Pronósticos guardados">{% if pl.accuracy %}error medio {{ pl.accuracy.mae|floatformat:1 }}<small>{{ pl.accuracy.n }} semana{{ pl.accuracy.n|pluralize }}{% if pl.accuracy.interval_n %} · {{ pl.accuracy.inside }} de {{ pl.accuracy.interval_n }} dentro del intervalo{% endif %}</small>{% else %}<span class="muted">sin semanas cerradas aún</span>{% endif %}</td>
+    </tr>{% empty %}<tr class="empty-row"><td colspan="6"><div class="empty">{% icon 'layers' %}<strong>Sin historial de movimientos</strong>Aparecerá cuando haya salidas registradas de las referencias.</div></td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% if records %}<details class="chart-table card-body"><summary>Pronósticos guardados frente a lo que salió (últimas semanas cerradas)</summary>
+    <div class="table-wrap"><table><thead><tr><th scope="col">Semana del</th><th scope="col">Referencia</th><th scope="col" class="num">Pronóstico</th><th scope="col" class="num">Intervalo</th><th scope="col" class="num">Salió</th></tr></thead>
+    <tbody>{% for r in records %}<tr><td class="nowrap">{{ r.week_start|date:"d/m/Y" }}</td><td>{{ r.product.name }}</td><td class="num">{{ r.forecast|floatformat:1 }}</td><td class="num">{% if r.low is not None %}{{ r.low|floatformat:1 }} a {{ r.high|floatformat:1 }}{% else %}—{% endif %}</td><td class="num">{% if r.stockout %}<span class="muted">sin existencias</span>{% else %}{{ r.actual }}{% endif %}</td></tr>{% endfor %}</tbody></table></div></details>{% endif %}
+</section>
+{% endif %}
+
+{% if finance %}
+<section class="card">
+  <div class="card-head"><div><h2>Pagos: a qué cliente corresponde cada ingreso</h2>
+    <p>Cada vez que contabilidad identifica un ingreso del banco, el modelo primero dice a quién se lo habría asignado, se anota si acertó y solo entonces aprende. Su opinión es una razón más en pantalla: nunca aplica un pago por sí solo.</p></div>
+    <div class="actions"><span class="chip plain">Modelo entrenado</span>
+    {% if is_admin %}<form method="post" action="{% url 'learning_retrain' %}">{% csrf_token %}{{ token_form.token }}<button class="btn btn-sm" type="submit">{% icon 'activity' 'sm' %}Reconstruir con el historial vigente</button></form>{% endif %}</div></div>
+  <div class="card-body">
+    <div class="kpis compact">
+      <div class="kpi"><span class="kpi-icon">{% icon 'inbox' 'lg' %}</span><span class="kpi-body"><span class="kpi-label">Ingresos aprendidos</span><span class="kpi-value">{{ pagos.examples }}</span><span class="kpi-sub">{% if pagos.trained %}Opina desde los {{ pagos.min_examples }} ejemplos{% else %}Opinará a partir de {{ pagos.min_examples }} ejemplos{% endif %}{% if pagos.voided %} · {{ pagos.voided }} corregido{{ pagos.voided|pluralize }} y olvidado{{ pagos.voided|pluralize }}{% endif %}</span></span></div>
+      <div class="kpi"><span class="kpi-icon">{% icon 'check-circle' 'lg' %}</span><span class="kpi-body"><span class="kpi-label">Acertó el primer candidato</span><span class="kpi-value">{% if pagos.eval_n %}{{ pagos.eval_hits }} de {{ pagos.eval_n }}{% else %}—{% endif %}</span><span class="kpi-sub">{% if pagos.eval_n %}Ya entrenado, antes de conocer la respuesta{% else %}Se mide desde que el modelo empieza a opinar{% endif %}</span></span></div>
+      <div class="kpi"><span class="kpi-icon">{% icon 'list' 'lg' %}</span><span class="kpi-body"><span class="kpi-label">Las reglas solas</span><span class="kpi-value">{% if pagos.eval_n %}{{ pagos.rules_hits }} de {{ pagos.eval_n }}{% else %}—{% endif %}</span><span class="kpi-sub">{% if pagos.eval_n %}En esos mismos ingresos; en {{ pagos.rules_none }} no habrían dado una sugerencia única{% else %}Comparación en los mismos ingresos{% endif %}</span></span></div>
+      <div class="kpi"><span class="kpi-icon">{% icon 'users' 'lg' %}</span><span class="kpi-body"><span class="kpi-label">Relaciones aprendidas</span><span class="kpi-value">{{ pagos.relations|length }}</span><span class="kpi-sub">Titulares o palabras del extracto vinculados a un cliente</span></span></div>
+    </div>
+    <h3 class="pron-h3">Qué tanto acertó según su puntaje</h3>
+    <p class="muted pron-note">El puntaje (0 a 100) ordena candidatos; no es un porcentaje de confianza. La columna de acierto es lo que de verdad pasó con puntajes parecidos.</p>
+    <div class="table-wrap"><table class="mobile-records"><thead><tr><th scope="col">Puntaje del modelo</th><th scope="col" class="num">Casos evaluados</th><th scope="col" class="num">Acertó</th><th scope="col">Tasa de acierto medida</th></tr></thead>
+      <tbody>{% for r in pagos.reliability %}<tr><td class="record-title" data-label="Puntaje del modelo">{{ r.label }}</td><td class="num" data-label="Casos evaluados">{{ r.n }}</td><td class="num" data-label="Acertó">{{ r.hits }}</td>
+        <td data-label="Tasa de acierto medida">{% if r.n %}{{ r.rate|floatformat:0 }} %{% if r.few %} <span class="chip warn">Pocos casos</span>{% endif %}{% else %}<span class="muted">sin casos</span>{% endif %}</td></tr>{% endfor %}</tbody></table></div>
+    {% if pagos.relations %}<h3 class="pron-h3">Relaciones que recuerda</h3><ul class="relation-list">{% for r in pagos.relations %}<li><strong>{{ r.party }}</strong><span class="chips">{% for w, v in r.words %}<span class="chip plain">{{ w }}</span>{% endfor %}</span></li>{% endfor %}</ul>
+    {% else %}<p class="muted pron-note">Todavía no hay relaciones con peso suficiente. Se forman al identificar ingresos cuyo titular o descripción no coincide con el nombre del cliente.</p>{% endif %}
+  </div>
+  {% if pagos.feedback %}<div class="table-wrap"><table class="mobile-records">
+    <thead><tr><th scope="col">Ingreso</th><th scope="col">El modelo habría dicho</th><th scope="col">Las reglas solas</th><th scope="col">Contabilidad eligió</th><th scope="col">Resultado</th></tr></thead>
+    <tbody>{% for f in pagos.feedback %}<tr>
+      <td class="record-title" data-label="Ingreso"><span class="cell-title">{{ f.transaction.amount|cop }} · {{ f.transaction.date|date:"d/m/Y" }}</span><small>{{ f.transaction.holder_name|default:f.transaction.description|truncatechars:60 }}</small></td>
+      <td data-label="El modelo habría dicho">{{ f.predicted_party.name|default:"—" }}<small>puntaje {% widthratio f.score 1 100 %} de 100 · {{ f.candidates }} candidatos</small></td>
+      <td data-label="Las reglas solas">{% if f.rules_party %}{{ f.rules_party.name }}{% else %}<span class="muted">sin sugerencia única</span>{% endif %}</td>
+      <td data-label="Contabilidad eligió">{{ f.chosen_party.name }}</td>
+      <td data-label="Resultado">{% if f.correct %}<span class="chip ok">Acertó</span>{% else %}<span class="chip warn">No acertó</span>{% endif %}{% if not f.trained %}<small>aún sin ejemplos suficientes: no cuenta</small>{% endif %}</td>
+    </tr>{% endfor %}</tbody>
+  </table></div>{% endif %}
+  {% if pagos.corrections %}<details class="chart-table card-body"><summary>Correcciones: ejemplos que el modelo olvidó</summary>
+    <div class="table-wrap"><table><thead><tr><th scope="col">Ingreso</th><th scope="col">Se había asignado a</th><th scope="col">Corregido el</th><th scope="col">Motivo</th></tr></thead>
+    <tbody>{% for f in pagos.corrections %}<tr><td>{{ f.transaction.amount|cop }} · {{ f.transaction.date|date:"d/m/Y" }}</td><td>{{ f.chosen_party.name }}</td><td class="nowrap">{{ f.voided_at|date:"d/m/Y H:i" }}</td><td>{{ f.void_reason }}</td></tr>{% endfor %}</tbody></table></div></details>{% endif %}
+</section>
+
+<section class="card">
+  <div class="card-head"><div><h2>Cobranza: qué pasó después de cada recordatorio</h2>
+    <p>Por tipo de cliente se prueban combinaciones de tono y momento, y se registra si hubo pago o abono en los {{ cobranza.window }} días siguientes al envío. Los envíos son simulados: quedan registrados y nada sale de la plataforma.</p></div>
+    <div class="chips"><span class="chip plain">Método estadístico</span><span class="chip plain">{{ cobranza.evaluated }} evaluados</span><span class="chip plain">{{ cobranza.pending }} con la ventana abierta</span>{% if cobranza.prepared_only %}<span class="chip plain">{{ cobranza.prepared_only }} solo preparados</span>{% endif %}</div></div>
+  <div class="card-body"><div class="callout">{% icon 'info' %}<p><strong>{{ cobranza.caveat }}</strong> Un recordatorio se evalúa solo cuando se cumplen sus {{ cobranza.window }} días; los mensajes que quedaron preparados sin envío registrado no se evalúan.{% if cobranza.reference_total.n %} Como referencia, de {{ cobranza.reference_total.n }} factura{{ cobranza.reference_total.n|pluralize }} comparable{{ cobranza.reference_total.n|pluralize }} que llegaron a {{ cobranza.reference_days }} días de mora sin recordatorio, {{ cobranza.reference_total.paid }} tuvieron pago en una ventana igual.{% endif %}</p></div></div>
+  {% if cobranza.segments %}<div class="table-wrap"><table class="mobile-records">
+    <thead><tr><th scope="col">Tipo de cliente</th><th scope="col" class="num">Con pago en la ventana</th><th scope="col">Sin recordatorio (referencia)</th><th scope="col">Estrategia más usada hoy</th><th scope="col">Por estrategia</th></tr></thead>
+    <tbody>{% for s in cobranza.segments %}<tr>
+      <td class="record-title" data-label="Tipo de cliente"><span class="cell-title">{{ s.label }}</span></td>
+      <td class="num" data-label="Con pago en la ventana">{% if s.n %}{{ s.successes }} de {{ s.n }}{% else %}<span class="muted">sin evaluar</span>{% endif %}</td>
+      <td data-label="Sin recordatorio (referencia)">{% if s.reference %}{{ s.reference.paid }} de {{ s.reference.n }}{% else %}<span class="muted">sin datos</span>{% endif %}</td>
+      <td data-label="Estrategia más usada hoy">{{ s.best.tone }} a los {{ s.best.timing }} días<small>{% if s.best.n %}hubo pago en la ventana en {{ s.best.successes }} de {{ s.best.n }}{% else %}criterio inicial, sin datos todavía{% endif %}</small></td>
+      <td data-label="Por estrategia"><span class="chips">{% for a in s.arms %}{% if a.n %}<span class="chip plain">{{ a.tone }} · {{ a.timing }} d · {{ a.successes }}/{{ a.n }}</span>{% endif %}{% endfor %}</span></td>
+    </tr>{% endfor %}</tbody>
+  </table></div>{% else %}<div class="empty">{% icon 'dollar' %}<strong>Aún no hay recordatorios enviados</strong>Apruebe recordatorios de cobro en Agentes; cuando se cumpla su ventana, aquí aparecerá qué pasó después.</div>{% endif %}
+  {% if cobranza.attempts %}<details class="chart-table card-body"><summary>Recordatorios recientes</summary>
+    <div class="table-wrap"><table><thead><tr><th scope="col">Cliente</th><th scope="col">Estrategia</th><th scope="col">Registrado</th><th scope="col" class="num">Valor</th><th scope="col">Envío</th><th scope="col">Resultado</th></tr></thead>
+    <tbody>{% for a in cobranza.attempts %}<tr><td>{{ a.party.name }}</td><td>{{ a.get_tone_display }} · {{ a.timing_days }} días de mora</td><td class="nowrap">{{ a.sent_at|date:"d/m/Y" }}</td><td class="num">{{ a.amount|cop }}</td>
+      <td>{% if a.sent %}Envío simulado registrado{% else %}Solo preparado{% endif %}</td>
+      <td>{% if a.outcome == 'paid' %}<span class="chip ok">Pagó en la ventana{% if a.days_to_pay is not None %} · día {{ a.days_to_pay }}{% endif %}</span>{% elif a.outcome == 'partial' %}<span class="chip ok">Abonó en la ventana</span>{% elif a.outcome == 'unpaid' %}<span class="chip warn">Sin pago en la ventana</span>{% elif a.outcome == 'skipped' %}<span class="chip plain">No se evalúa</span>{% else %}<span class="chip plain">Ventana abierta</span>{% endif %}</td></tr>{% endfor %}</tbody></table></div></details>{% endif %}
+</section>
+{% endif %}
+{% endblock %}

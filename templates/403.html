@@ -1,0 +1,28 @@
+{% load static %}<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#FFFFFF">
+<title>Acceso restringido · Plataforma inteligente de operaciones</title>
+<link rel="icon" type="image/png" href="{% static 'icono/favicon.png' %}">
+<link rel="stylesheet" href="{% static 'app.css' %}">
+</head>
+<body>
+<main class="error-page">
+  <div class="box is-locked">
+    <div class="brand">
+      <img class="brand-mark" src="{% static 'icono/icono.svg' %}" alt="" width="30" height="30">
+      <span class="brand-text"><span class="brand-name">Plataforma inteligente de operaciones</span><span class="demo-flag">Demostración con datos sintéticos</span></span>
+    </div>
+    <span class="error-code">Error 403</span>
+    <h1>Acceso restringido</h1>
+    <p>{% if user.is_authenticated %}El perfil {{ user.get_role_display }} no tiene permiso para abrir esta página.{% else %}Su perfil no tiene permiso para abrir esta página.{% endif %} Los permisos se comprueban en el servidor según el perfil de cada cuenta. Vuelva al resumen o entre con un perfil que sí tenga acceso.</p>
+    <div class="actions"><a class="btn btn-primary" href="{% url 'home' %}">Ir al resumen</a></div>
+    {% if user.is_authenticated and demo_profiles %}<div class="error-switch"><p>En esta demostración puede cambiar de perfil y volver a esta misma página:</p>
+    {% include 'feria/_cambiar_perfil.html' %}</div>{% endif %}
+  </div>
+</main>
+</body>
+</html>

@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block crumbs %}{% if back %}<p class="crumbs"><a href="{% url back %}">{% icon 'arrow-left' 'sm' %} Volver</a></p>{% elif back_url %}<p class="crumbs"><a href="{{ back_url }}">{% icon 'arrow-left' 'sm' %} Volver</a></p>{% endif %}{% endblock %}
+{% block content %}
+<section class="card form-card">
+  <div class="card-body">
+    {% if intro %}<p class="muted">{{ intro }}</p>{% endif %}
+    {% if note %}<div class="callout">{% icon 'info' %}<p>{{ note }}</p></div>{% endif %}
+    {% if form.errors %}
+    <div class="form-errors" data-guide-server-errors role="alert" tabindex="-1">
+      {% icon 'alert-circle' %}
+      <div><strong>Corrija lo siguiente para continuar.</strong><ul>
+        {% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}
+        {% for f in form %}{% for e in f.errors %}<li>{% if f.is_hidden %}{{ e }}{% else %}<a href="#{{ f.id_for_label }}">{{ f.label }}: {{ e }}</a>{% endif %}</li>{% endfor %}{% endfor %}
+      </ul></div>
+    </div>
+    {% endif %}
+    <form method="post" data-operation-guide="{{ request.resolver_match.url_name }}" novalidate>{% csrf_token %}
+      {% for f in form.hidden_fields %}{{ f }}{% endfor %}
+      <div class="operation-guide" data-guide-header hidden>
+        <div class="operation-guide-mode" role="group" aria-label="Forma de registro">
+          <button class="btn btn-ghost" type="button" data-guide-mode-button="guided" aria-pressed="true">{% icon 'list' 'sm' %}Paso a paso</button>
+          <button class="btn btn-ghost" type="button" data-guide-mode-button="full" aria-pressed="false">{% icon 'edit' 'sm' %}Formulario completo</button>
+        </div>
+        <div class="operation-guide-head">
+          <div><span class="operation-guide-kicker" data-guide-kicker>Registro guiado</span><p>Paso a paso</p></div>
+          <span class="operation-guide-count" data-guide-count></span>
+        </div>
+        <progress class="operation-guide-progress" data-guide-progress value="1" max="4" aria-label="Avance del registro"></progress>
+        <ol class="operation-guide-steps" data-guide-steps aria-label="Pasos del registro"></ol>
+        <div class="operation-guide-question">
+          <h2 data-guide-question tabindex="-1"></h2>
+          <p data-guide-hint></p>
+        </div>
+      </div>
+      <div class="form-grid" data-guide-fields>
+        {% for f in form.visible_fields %}{% include '_field.html' with f=f %}{% endfor %}
+      </div>
+      <section class="operation-guide-review" data-guide-review aria-label="Resumen del registro" hidden>
+        <dl data-guide-summary></dl>
+        <p class="operation-guide-notice" data-guide-effect></p>
+        <button class="btn btn-ghost" type="button" data-guide-edit>{% icon 'edit' 'sm' %}Modificar respuestas</button>
+      </section>
+      <p class="field-error operation-guide-live" data-guide-error role="alert" hidden></p>
+      <p class="sr-only" data-guide-live aria-live="polite" aria-atomic="true"></p>
+      {% if locations %}<datalist id="ubicaciones">{% for l in locations %}<option value="{{ l }}">{% endfor %}</datalist>{% endif %}
+      <div class="form-actions">
+        {% if back %}<a class="btn btn-ghost" href="{% url back %}">Cancelar</a>{% elif back_url %}<a class="btn btn-ghost" href="{{ back_url }}">Cancelar</a>{% endif %}
+        <div class="operation-guide-controls" data-guide-controls hidden>
+          <button class="btn btn-ghost" type="button" data-guide-previous>{% icon 'arrow-left' 'sm' %}Anterior</button>
+          <button class="btn btn-primary" type="button" data-guide-next>Continuar{% icon 'arrow-right' 'sm' %}</button>
+        </div>
+        <button class="btn {% if danger %}btn-danger solid{% else %}btn-primary{% endif %}" type="submit" data-guide-submit>{% if danger %}{% icon 'slash' %}{% else %}{% icon 'check' %}{% endif %}{{ submit|default:"Guardar" }}</button>
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %}

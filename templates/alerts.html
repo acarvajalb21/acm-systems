@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block title %}Alertas{% endblock %}
+{% block heading %}Alertas{% endblock %}
+{% block content %}
+<div class="page-head">
+  <p>{% if unread %}{{ unread }} alerta{{ unread|pluralize }} sin leer.{% else %}Está al día.{% endif %} Una alerta desaparece cuando se resuelve la condición que la generó.</p>
+  <div class="actions">
+    {% if unread %}<form method="post" action="{% url 'read_alert' %}">{% csrf_token %}<input type="hidden" name="key" value="__todas__"><button class="btn" type="submit">{% icon 'check' %}Marcar todas como leídas</button></form>{% endif %}
+    {% if manager or finance %}<a class="btn" href="{% url 'settings' %}">{% icon 'sliders' %}Configurar</a>{% endif %}
+  </div>
+</div>
+<section class="card">
+  <div class="card-head"><div><h2>Alertas vigentes</h2><p>Lo que hoy necesita atención en su perfil.</p></div></div>
+  <div class="alert-list">{% for a in alerts %}
+    <article class="alert-row {{ a.level }}{% if a.read %} is-read{% endif %}">
+      <span class="alert-icon">{% if a.level == 'critical' %}{% icon 'alert-circle' %}{% elif a.level == 'warning' %}{% icon 'alert-triangle' %}{% else %}{% icon 'info' %}{% endif %}</span>
+      <div class="alert-body"><h3>{% if not a.read %}<span class="unread-dot" aria-label="Sin leer"></span>{% endif %}{{ a.title }}</h3><p>{{ a.detail }}</p></div>
+      <div class="actions">
+        <a class="btn btn-sm{% if a.level == 'critical' %} btn-primary{% endif %}" href="{{ a.url }}">{% if a.level == 'info' %}Ver{% else %}Atender{% endif %} {% icon 'arrow-right' 'sm' %}</a>
+        {% if not a.read %}<form method="post" action="{% url 'read_alert' %}">{% csrf_token %}<input type="hidden" name="key" value="{{ a.key }}"><button class="btn btn-sm btn-ghost" type="submit">Marcar leída</button></form>{% endif %}
+      </div>
+    </article>
+  {% empty %}<div class="empty">{% icon 'check-circle' %}<strong>Sin alertas</strong>No hay vencimientos, faltantes ni pendientes para su perfil.</div>{% endfor %}</div>
+</section>
+
+<section class="card" id="avisos-recientes">
+  <div class="card-head"><div><h2>Avisos recientes</h2><p>Registro interno de las alertas nuevas, una sola vez por alerta. Nada se envía fuera de la plataforma.</p></div></div>
+  <div class="table-wrap"><table class="mobile-records">
+    <thead><tr><th scope="col">Aviso</th><th scope="col">Nivel</th><th scope="col">Registrado</th><th scope="col"><span class="sr-only">Abrir</span></th></tr></thead>
+    <tbody>{% for n in notices %}<tr>
+      <td class="record-title" data-label="Aviso"><span class="cell-title">{{ n.title }}</span><small>{{ n.detail }}</small></td>
+      <td data-label="Nivel">{% if n.level == 'critical' %}<span class="chip bad">Urgente</span>{% elif n.level == 'warning' %}<span class="chip warn">Advertencia</span>{% else %}<span class="chip info">Informativa</span>{% endif %}</td>
+      <td class="nowrap" data-label="Registrado">{{ n.created_at|date:"d/m/Y H:i" }}</td>
+      <td class="num record-actions" data-label="Abrir">{% if n.url %}<a class="btn btn-sm btn-ghost" href="{{ n.url }}">Ver</a>{% endif %}</td>
+    </tr>{% empty %}<tr class="empty-row"><td colspan="4"><div class="empty">{% icon 'bell' %}<strong>Sin avisos todavía</strong>El agente de avisos internos registra aquí cada alerta nueva de su perfil.</div></td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endblock %}

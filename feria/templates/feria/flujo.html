@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Mapa de flujo{% endblock %}
+{% block heading %}Mapa de flujo{% endblock %}
+{% block estilos %}<link rel="stylesheet" href="{% static 'modulos/flujo.css' %}">{% endblock %}
+{% block content %}
+<div class="page-head">
+  <p>De la solicitud al cobro, lo que cada estación tiene pendiente al {{ today|date:"d/m/Y" }}. Elija una estación para ver sus registros y abrir el módulo donde se atienden.</p>
+  <ul class="flujo-leyenda" aria-label="Estados de una estación">
+    <li><span class="flujo-luz"></span>Al día</li><li><span class="flujo-luz is-warning"></span>Atención</li><li><span class="flujo-luz is-critical"></span>Crítico</li>
+  </ul>
+</div>
+
+<section class="flow-map flujo" data-flujo aria-label="Flujo de la operación, de la solicitud al cobro">
+  <ol class="flow-stations flujo-linea" role="tablist" aria-label="Estaciones del flujo">
+    {% for st in stations %}<li class="flujo-paso flujo-paso-{{ st.order }}" role="presentation" id="estacion-{{ st.key }}">
+      <a class="flow-station flujo-estacion{% if st.state %} is-{{ st.state }}{% endif %}{% if not st.allowed %} is-locked{% endif %}" role="tab" id="flujo-tab-{{ st.key }}" href="?etapa={{ st.key }}#estacion-{{ st.key }}" data-etapa="{{ st.key }}" aria-controls="flujo-panel-{{ st.key }}" aria-selected="{% if st.selected %}true{% else %}false{% endif %}"{% if not st.selected %} tabindex="-1"{% endif %}>
+        {% include 'feria/flujo_escena.html' with pulso=True %}
+        <span class="flujo-texto">
+          <span class="flujo-nombre"><span class="flujo-orden" aria-hidden="true">{{ st.order }}</span>{{ st.label }}</span>
+          {% if st.allowed %}<strong{% if st.long %} class="is-largo"{% endif %}>{{ st.value }}</strong><small>{{ st.fact }}</small>
+          <span class="chip {{ st.chip }}">{{ st.state_label }}</span>
+          {% else %}<span class="flujo-candado">{% icon 'lock' 'sm' %}Sin acceso con su perfil</span>{% endif %}
+        </span>
+      </a>
+    </li>{% endfor %}
+  </ol>
+  {% for st in stations %}<div class="flow-panel flujo-panel flujo-pos-{{ st.order }}" role="tabpanel" id="flujo-panel-{{ st.key }}" aria-labelledby="flujo-tab-{{ st.key }}" tabindex="0"{% if not st.selected %} hidden{% endif %}>
+    {% if st.allowed %}
+    <div class="flujo-panel-cuerpo">
+      <div class="flujo-ficha">
+        <h2>{{ st.label }}</h2>
+        <p>{{ st.explain }}</p>
+        <p class="flujo-estado"><span class="chip {{ st.chip }}">{{ st.state_label }}</span><span>{{ st.reason }}</span></p>
+        <div class="actions"><a class="btn btn-primary" href="{{ st.module }}">Abrir {{ st.module_label }} {% icon 'arrow-right' 'sm' %}</a></div>
+        {% if st.links %}<p class="flujo-enlaces">{% for label, url in st.links %}<a class="text-link" href="{{ url }}">{{ label }}</a>{% endfor %}</p>{% endif %}
+        <p class="flujo-regla"><strong>Cuándo cambia de estado.</strong> {{ st.rule }}</p>
+      </div>
+      <div class="flujo-lista">
+        {% if st.records %}<h3>Registros que explican la cifra</h3>
+        <ul class="prio-list flujo-registros">
+          {% for r in st.records %}<li class="prio-item{% if r.level %} is-{{ r.level }}{% endif %}"><span class="prio-mark" aria-hidden="true"></span>
+            <div class="prio-body"><strong><a href="{{ r.url }}">{{ r.title }}</a></strong><p>{{ r.detail }}</p></div>
+            <span class="prio-when">{{ r.when }}</span>
+            <span class="chip {{ r.chip }} prio-action">{{ r.chip_text }}</span></li>{% endfor %}
+        </ul>
+        {% if st.more %}<p class="flujo-mas">Y {{ st.more }} más en <a href="{{ st.module }}">{{ st.module_label }}</a>.</p>{% endif %}
+        {% else %}<div class="empty is-ok">{% icon 'check-circle' %}<strong>Nada pendiente en esta estación</strong>{{ st.reason }}</div>{% endif %}
+      </div>
+    </div>
+    {% else %}
+    <div class="empty is-locked">{% icon 'lock' %}<strong>{{ st.label }}: su perfil no abre esta estación</strong><p>{{ st.explain }} La atienden los perfiles {{ st.who }}; por eso aquí no se muestran sus cifras ni sus registros.</p>{% if profile_switch %}<p>En la demostración puede cambiar de perfil desde el menú de su cuenta.</p>{% endif %}</div>
+    {% endif %}
+  </div>{% endfor %}
+</section>
+
+<p class="flujo-nota">Los conteos salen de los mismos registros que muestra cada módulo. Todo corresponde a un escenario con datos sintéticos; los envíos a proveedores, al banco y al sistema contable son simulados.</p>
+{% endblock %}
+{% block scripts %}<script src="{% static 'modulos/flujo.js' %}" defer></script>{% endblock %}

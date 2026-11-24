@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Propuesta · {{ agent.name }}{% endblock %}
+{% block heading %}Propuesta de un agente{% endblock %}
+{% block estilos %}<link rel="stylesheet" href="{% static 'modulos/resumen.css' %}">{% endblock %}
+{% block crumbs %}<p class="crumbs"><a href="{% url 'agents' %}{% if a.status == 'proposed' %}#por-aprobar{% endif %}">{% icon 'arrow-left' 'sm' %} Agentes</a></p>{% endblock %}
+{% block content %}
+<div class="detail-head">
+  <div><h2>{{ a.title }}</h2>
+    <div class="chips">{% include 'agentes/_estado.html' %}<span class="chip plain">{{ agent.name }}</span>{% if a.confidence %}<span class="chip plain">Confianza {{ a.confidence|lower }}</span>{% endif %}</div></div>
+</div>
+
+<section class="card agentes-recorrido" aria-label="Paso en que va la propuesta">
+  <ol class="stage-track">{% for s in track.steps %}<li class="{{ s.state }}{% if s.skipped %} agentes-omitido{% endif %}"{% if s.state == 'is-current' %} aria-current="step"{% endif %}>{{ s.label }}{% if s.skipped %}<span class="sr-only"> (no ocurrió)</span>{% endif %}</li>{% endfor %}</ol>
+  <p>{{ track.note }}</p>
+</section>
+
+<div class="split">
+  <div class="stack">
+    <section class="card" aria-labelledby="agentes-porque">
+      <div class="card-head"><div><h2 id="agentes-porque">Por qué la propone</h2><p>{% if a.status == 'proposed' %}Texto que el agente guardó al calcularla, el {{ a.refreshed_at|date:"d/m/Y" }} a las {{ a.refreshed_at|date:"H:i" }}.{% else %}Texto que el agente guardó al proponerla.{% endif %}</p></div></div>
+      <div class="card-body">
+        <p class="agentes-razon">{{ a.detail|default:"El agente no dejó una explicación adicional." }}</p>
+        {% if a.kind == 'purchase_order' %}<p class="muted">Las cantidades del pedido se recalculan al aprobar, con las existencias y pedidos de ese momento.</p>{% endif %}
+        {% if message %}<details class="agent-message"><summary>Ver el mensaje preparado (envío simulado)</summary><pre>{{ message }}</pre></details>{% endif %}
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="agentes-evidencias">
+      <div class="card-head"><div><h2 id="agentes-evidencias">Evidencias</h2><p>Registros de la plataforma en los que se apoya, con su estado de hoy.</p></div></div>
+      {% if evidence %}<ul class="prio-list agentes-evidencia">
+        {% for e in evidence %}<li class="prio-item"><span class="prio-mark" aria-hidden="true"></span>
+          <div class="prio-body"><strong>{{ e.label }}</strong><p>{{ e.value }}</p></div>
+          {% if e.url %}<a class="btn btn-sm prio-action" href="{{ e.url }}" aria-label="Abrir {{ e.label|lower }}: {{ e.value }}">Abrir</a>{% endif %}</li>{% endfor %}
+      </ul>{% else %}<div class="empty">{% icon 'info' %}<strong>Sin registros enlazados</strong>Los registros de esta propuesta ya no existen o el agente no guardó referencias.</div>{% endif %}
+    </section>
+
+    <section class="card" aria-labelledby="agentes-historial">
+      <div class="card-head"><div><h2 id="agentes-historial">Historial</h2><p>Lo que quedó registrado de esta propuesta, en orden.</p></div></div>
+      <div class="card-body"><ol class="timeline agentes-linea">{% for t in timeline %}<li><strong>{{ t.title }}</strong><small>{{ t.when|date:"d/m/Y H:i" }}</small>{% if t.detail %}<p>{{ t.detail }}</p>{% endif %}</li>{% endfor %}</ol></div>
+    </section>
+  </div>
+
+  <aside class="detail-panel" aria-label="Decisión">
+    <div class="detail-panel-head"><div><h2>{% if a.status == 'proposed' %}Decisión{% else %}Resultado{% endif %}</h2><p>{{ a.get_status_display }}</p></div></div>
+    <div class="detail-panel-body">
+      <dl class="meta agentes-meta">
+        {% if a.amount %}<div><dt>Valor de la operación</dt><dd>{{ a.amount|cop }}</dd></div>{% endif %}
+        {% if a.benefit %}<div><dt>{% if a.agent == 'pronto_pago' %}Descuento por pronto pago{% else %}Recaudo por aplicar{% endif %}</dt><dd>{{ a.benefit|cop }}</dd></div>{% endif %}
+        <div><dt>Propuesta el</dt><dd>{{ a.created_at|date:"d/m/Y H:i" }}</dd></div>
+        <div><dt>Pueden decidirla</dt><dd class="light">{{ approvers }}</dd></div>
+        {% if a.decided_at %}<div><dt>Decidió</dt><dd>{% if a.decided_by %}{{ a.decided_by.display_name }}{% else %}El agente, al recalcular{% endif %}</dd></div>
+        <div><dt>Cuándo</dt><dd>{{ a.decided_at|date:"d/m/Y H:i" }}</dd></div>{% endif %}
+      </dl>
+      {% if a.status != 'proposed' %}
+      <div class="callout {% if a.status == 'executed' %}ok{% elif a.status == 'failed' %}bad{% elif a.status == 'superseded' %}warn{% endif %} agentes-resultado">{% icon 'info' %}<p>{{ a.result.message|default:a.note|default:"Sin cambios en los datos." }}</p></div>
+      {% if a.result.text %}<details class="agent-message"><summary>Ver el mensaje (envío simulado)</summary><pre>{{ a.result.text }}</pre></details>{% endif %}
+      {% endif %}
+    </div>
+    {% if can_decide %}
+    <form class="detail-panel-foot agentes-decidir" method="post" action="{% url 'agents_decide' %}">{% csrf_token %}<input type="hidden" name="volver" value="detalle">
+      <div class="field"><label for="nota-propuesta">Nota para el historial (opcional)</label><input class="input" id="nota-propuesta" name="nota" maxlength="300"></div>
+      <p class="help">Al aprobar se vuelve a comprobar con los datos de este momento. Si la situación cambió, la propuesta queda «ya no aplica» y no se cambia nada.</p>
+      <button class="btn btn-primary" type="submit" name="accion" value="aprobar:{{ a.pk }}">{% icon 'check' %}Aprobar y ejecutar</button>
+      <button class="btn btn-ghost" type="submit" name="accion" value="descartar:{{ a.pk }}">Descartar</button>
+    </form>
+    {% elif a.status == 'proposed' %}
+    <div class="detail-panel-foot"><p class="help">{% icon 'lock' 'sm' %} Su perfil ({{ user.get_role_display }}) puede verla, pero no decidirla.</p></div>
+    {% elif a.status == 'executed' and a.result.link %}
+    <div class="detail-panel-foot"><a class="btn btn-primary" href="{{ a.result.link }}">{{ a.result.link_label|default:"Abrir el registro" }} {% icon 'arrow-right' 'sm' %}</a><a class="btn btn-ghost" href="{% url 'agents_history' %}">Historial de decisiones</a></div>
+    {% else %}
+    <div class="detail-panel-foot"><a class="btn" href="{% url 'agents_history' %}">Historial de decisiones</a></div>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}

@@ -1,0 +1,18 @@
+{% if result.kind == 'unknown' %}<form method="post" action="{% url 'reception_link' session.pk %}" class="scan-prompt" data-fetch>{% csrf_token %}
+  <p><strong>Código nuevo: {{ result.gtin }}</strong> ¿Qué referencia es? Se recordará para las próximas recepciones.</p>
+  <input type="hidden" name="gtin" value="{{ result.gtin }}"><input type="hidden" name="codigo" value="{{ request.POST.codigo }}"><input type="hidden" name="cajas" value="{{ request.POST.cajas|default:1 }}">
+  <div class="form-grid">
+    <div class="field"><label for="p-producto">Referencia</label><select class="input" id="p-producto" name="producto" required>{% for p in result.products %}<option value="{{ p.pk }}">{{ p.name }}{% if p.presentation %} · {{ p.presentation }}{% endif %}</option>{% endfor %}</select></div>
+    <div class="field"><label for="p-unidades">Unidades por caja</label><input class="input" id="p-unidades" name="unidades" type="number" min="1" max="1000" value="1" required></div>
+  </div>
+  <div class="form-actions"><button class="btn btn-primary" type="submit">{% icon 'check' %}Guardar y sumar la caja</button></div>
+</form>{% elif result.kind == 'needs_details' %}<form method="post" action="{% url 'reception_manual' session.pk %}" class="scan-prompt" data-fetch>{% csrf_token %}
+  <p><strong>{{ result.line.product.name }}</strong>: el código no trae lote ni vencimiento. Escríbalos (vienen impresos en la caja).</p>
+  <input type="hidden" name="linea" value="{{ result.line.pk }}"><input type="hidden" name="gtin" value="{{ result.gtin }}"><input type="hidden" name="serial" value="{{ result.serial }}">
+  <div class="form-grid">
+    <div class="field"><label for="p-lote">Lote</label><input class="input" id="p-lote" name="lote" value="{{ result.lot }}" required autocapitalize="characters"></div>
+    <div class="field"><label for="p-vence">Vencimiento</label><input class="input" id="p-vence" name="vence" type="date" value="{{ result.expiry|date:'Y-m-d' }}" required></div>
+    <div class="field"><label for="p-cantidad">Unidades</label><input class="input" id="p-cantidad" name="cantidad" type="number" min="1" value="{{ result.boxes|default:1 }}" required></div>
+  </div>
+  <div class="form-actions"><button class="btn btn-primary" type="submit">{% icon 'check' %}Sumar</button></div>
+</form>{% endif %}

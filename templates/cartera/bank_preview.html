@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block crumbs %}<p class="crumbs"><a href="{% url 'bank' %}">{% icon 'arrow-left' 'sm' %} Banco y recaudos</a></p>{% endblock %}
+{% block content %}
+<div class="kpis">
+  <div class="kpi"><span class="kpi-icon">{% icon 'list' 'lg' %}</span><span class="kpi-body"><span class="kpi-label">Movimientos leídos</span><span class="kpi-value">{{ imp.total_rows }}</span><span class="kpi-sub">{{ imp.account }}</span></span></div>
+  <div class="kpi"><span class="kpi-icon ok">{% icon 'plus' 'lg' %}</span><span class="kpi-body"><span class="kpi-label">Nuevos</span><span class="kpi-value">{{ imp.new_rows }}</span><span class="kpi-sub">Ingresos {{ inflow|pesos }} · salidas {{ outflow|pesos }}</span></span></div>
+  <div class="kpi"><span class="kpi-icon warn">{% icon 'layers' 'lg' %}</span><span class="kpi-body"><span class="kpi-label">Ya importados</span><span class="kpi-value">{{ imp.known_rows }}</span><span class="kpi-sub">No se crean de nuevo</span></span></div>
+</div>
+{% if imp.warnings %}<div class="callout warn">{% icon 'alert-circle' %}<div><strong>Revise antes de confirmar</strong><ul>{% for w in imp.warnings %}<li>{{ w }}</li>{% endfor %}</ul></div></div>{% endif %}
+<section class="card">
+  <div class="card-head"><div><h2>{{ imp.file_name }}</h2><p>{{ imp.get_status_display }} · cargado por {{ imp.uploaded_by.display_name }} el {{ imp.created_at|date:"d/m/Y H:i" }}{% if imp.confirmed_by %} · confirmado por {{ imp.confirmed_by.display_name }}{% endif %}</p></div>
+  {% if imp.status == 'preview' %}<div class="actions">
+    <form method="post">{% csrf_token %}{{ token_form.token }}<input type="hidden" name="action" value="discard"><button class="btn btn-ghost" type="submit">Descartar</button></form>
+    <form method="post">{% csrf_token %}{{ token_form.token }}<input type="hidden" name="action" value="confirm"><button class="btn btn-primary" type="submit">{% icon 'check' %}Confirmar {{ imp.new_rows }} nuevo{{ imp.new_rows|pluralize }}</button></form>
+  </div>{% endif %}</div>
+  <div class="table-wrap"><table class="mobile-records">
+    <thead><tr><th scope="col">Fila</th><th scope="col">Fecha</th><th scope="col">Descripción</th><th scope="col">Titular · cuenta</th><th scope="col" class="num">Valor</th><th scope="col">Estado</th></tr></thead>
+    <tbody>{% for r in imp.rows %}<tr>
+      <td data-label="Fila">{{ r.line }}</td><td class="nowrap" data-label="Fecha">{{ r.date|fecha }}</td>
+      <td data-label="Descripción">{{ r.description|default:"—" }}<small>{{ r.reference }}</small></td>
+      <td data-label="Titular">{{ r.holder_name|default:"—" }}<small>{% if r.origin_account %}****{{ r.origin_account|slice:"-4:" }}{% endif %}</small></td>
+      <td class="num" data-label="Valor">{{ r.amount|cop }}</td>
+      <td data-label="Estado">{% if r.known %}<span class="chip plain">Ya importado</span>{% else %}<span class="chip ok">Nuevo{% if r.occurrence > 1 %} · {{ r.occurrence }}.º igual{% endif %}</span>{% endif %}</td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endblock %}

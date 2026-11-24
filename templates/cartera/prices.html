@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block title %}Listas de precios{% endblock %}
+{% block heading %}Listas de precios{% endblock %}
+{% block content %}
+<div class="page-head">
+  <p>Precio vigente de cada referencia según el contexto comercial. Cada cambio se registra como una nueva vigencia y cada venta conserva el precio que se le aplicó.</p>
+  {% if can_edit %}<div class="actions"><a class="btn btn-primary" href="{% url 'price_new' %}">{% icon 'plus' %}Registrar precio</a></div>{% endif %}
+</div>
+<section class="card">
+  <div class="table-wrap"><table>
+    <thead><tr><th scope="col">Referencia</th>{% for pl in lists %}<th scope="col" class="num">{{ pl.name }}<small>{{ pl.get_context_display }}</small></th>{% endfor %}</tr></thead>
+    <tbody>{% for row in rows %}<tr><td><span class="cell-title">{{ row.product.name }}</span><small>{{ row.product.code }}</small></td>
+      {% for item in row.cells %}<td class="num">{% if item %}{{ item.price|cop }}<small>desde {{ item.valid_from|date:"d/m/Y" }}</small>{% else %}<span class="faint">—</span>{% endif %}</td>{% endfor %}</tr>
+    {% empty %}<tr class="empty-row"><td colspan="{{ lists|length|add:1 }}"><div class="empty">{% icon 'tag' %}<strong>Aún no hay precios registrados</strong><small>Se agregan con «Registrar precio».</small></div></td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% if upcoming %}<section class="card">
+  <div class="card-head"><h2>Próximas vigencias</h2></div>
+  <div class="table-wrap"><table><tbody>{% for i in upcoming %}<tr><td>{{ i.product.name }}</td><td>{{ i.price_list.name }}</td><td class="num">{{ i.price|cop }}</td><td class="nowrap">desde {{ i.valid_from|date:"d/m/Y" }}</td></tr>{% endfor %}</tbody></table></div>
+</section>{% endif %}
+{% endblock %}

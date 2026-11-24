@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% block title %}Lote {{ batch.lot }}{% endblock %}
+{% block crumbs %}<p class="crumbs"><a href="{% url 'stock' %}">Existencias</a> / Trazabilidad</p>{% endblock %}
+{% block heading %}{{ batch.product.name }} · lote {{ batch.lot }}{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="card-body">
+    <div class="detail-head">
+      <dl class="meta">
+        <div><dt>Ubicación</dt><dd>{{ batch.location }}</dd></div>
+        <div><dt>Vencimiento</dt><dd>{{ batch.expiry|date:"d/m/Y" }} {% if batch.expired %}<span class="chip bad">Vencido</span>{% else %}<span class="faint">({{ batch.days_left }} días)</span>{% endif %}</dd></div>
+        <div><dt>Físico</dt><dd>{{ batch.physical|qty:batch.product }}</dd></div>
+        <div><dt>Reservado</dt><dd>{{ batch.reserved|num }}</dd></div>
+        <div><dt>Disponible</dt><dd>{{ batch.available|num }}</dd></div>
+      </dl>
+      <div class="actions">
+        {% if batch.expired %}{% if batch.physical %}<a class="btn btn-danger" href="{% url 'adjust_out' %}?lote={{ batch.pk }}&tipo=writeoff">{% icon 'trending-down' %}Dar de baja</a>{% endif %}
+        {% elif batch.available %}<a class="btn" href="{% url 'reserve' %}?lote={{ batch.pk }}">{% icon 'bookmark' %}Reservar</a><a class="btn btn-primary" href="{% url 'exit_stock' %}?lote={{ batch.pk }}">{% icon 'arrow-up-right' %}Salida</a>{% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+<section class="card">
+  <div class="card-head"><h2>Movimientos del lote</h2></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th scope="col">Fecha</th><th scope="col">Movimiento</th><th scope="col">Origen / destino</th><th scope="col" class="num">Cantidad</th><th scope="col">Responsable</th></tr></thead>
+    <tbody>{% for m in movements %}<tr>
+      <td class="nowrap">{{ m.created_at|date:"d/m/Y H:i" }}</td>
+      <td>{{ m.get_kind_display }}{% if m.loss_reason %}<small>{{ m.get_loss_reason_display }}</small>{% endif %}</td>
+      <td>{% if m.invoice_line %}<a href="{% url 'invoice' m.invoice_line.invoice_id %}">Factura {{ m.invoice_line.invoice.number }}</a><small>{{ m.invoice_line.invoice.supplier.name }}</small>
+          {% elif m.reservation %}{{ m.reservation.purpose }}{% if m.reservation.request %}<small>Solicitud de {{ m.reservation.request.requester.display_name }}</small>{% endif %}
+          {% else %}{{ m.reference|default:m.note|default:"—" }}{% if m.reference and m.note %}<small>{{ m.note }}</small>{% endif %}{% endif %}</td>
+      <td class="num strong">{% if m.quantity > 0 %}+{% endif %}{{ m.quantity|num }}</td>
+      <td>{{ m.actor.display_name }}</td>
+    </tr>{% empty %}<tr><td colspan="5"><div class="empty">{% icon 'activity' %}<strong>Sin movimientos</strong>Las entradas, salidas y ajustes de este lote aparecerán aquí.</div></td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+<section class="card">
+  <div class="card-head"><h2>Reservas</h2></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th scope="col">Fecha</th><th scope="col">Destino</th><th scope="col" class="num">Cantidad</th><th scope="col">Estado</th><th scope="col">Registró</th></tr></thead>
+    <tbody>{% for r in reservations %}<tr>
+      <td class="nowrap">{{ r.created_at|date:"d/m/Y H:i" }}</td>
+      <td>{{ r.purpose }}{% if r.request %}<small>{{ r.request.requester.display_name }}</small>{% endif %}</td>
+      <td class="num">{{ r.quantity|num }}</td>
+      <td>{% if r.status == 'active' %}<span class="chip info">Activa</span>{% elif r.status == 'delivered' %}<span class="chip ok">Entregada</span>{% else %}<span class="chip">Liberada</span>{% endif %}</td>
+      <td>{{ r.created_by.display_name }}</td>
+    </tr>{% empty %}<tr><td colspan="5"><div class="empty">{% icon 'bookmark' %}<strong>Sin reservas</strong>Use «Reservar» para apartar unidades de este lote.</div></td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endblock %}

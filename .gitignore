@@ -1,0 +1,28 @@
+# Entorno y cachés de Python
+/.venv/
+/venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Estado local de la demostración y credenciales
+/datos/
+/documentos_demo/
+*.sqlite3
+*.sqlite3-*
+*.log
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# Paquetes generados y archivos del editor o del sistema
+/dist/
+*.zip
+/.vscode/
+/.idea/
+.DS_Store
+Thumbs.db

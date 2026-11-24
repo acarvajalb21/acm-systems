@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+{% load static l10n %}
+{% block title %}Reposición{% endblock %}
+{% block heading %}Reposición{% endblock %}
+{% block estilos %}<link rel="stylesheet" href="{% static 'modulos/pronosticos.css' %}">{% endblock %}
+{% block content %}
+<div class="page-head">
+  <p>Qué referencias pedir, cuánto y cuándo, según lo que ha salido, lo que hay disponible y en camino, y lo que tarda cada proveedor.</p>
+  <div class="actions"><a class="btn" href="{% url 'purchase_orders' %}">{% icon 'truck' %}Pedidos</a><a class="btn btn-ghost" href="{% url 'methodology' %}">{% icon 'info' %}Cómo se calcula</a></div>
+</div>
+
+<div class="kpis">
+  <div class="kpi"><span class="kpi-icon {% if counts.pedir_ya %}bad{% else %}ok{% endif %}">{% icon 'package' 'lg' %}</span><span class="kpi-body"><span class="kpi-label">Pedir ya</span><span class="kpi-value">{{ counts.pedir_ya }}</span><span class="kpi-sub">Se agotarían antes de recibir un pedido</span></span></div>
+  <div class="kpi"><span class="kpi-icon {% if counts.pedir_pronto %}warn{% endif %}">{% icon 'clock' 'lg' %}</span><span class="kpi-body"><span class="kpi-label">Pedir pronto</span><span class="kpi-value">{{ counts.pedir_pronto }}</span><span class="kpi-sub">Llegan a su punto de pedido en {{ params.revision_dias }} días o menos</span></span></div>
+  <div class="kpi"><span class="kpi-icon">{% icon 'dollar' 'lg' %}</span><span class="kpi-body"><span class="kpi-label">Compra sugerida</span><span class="kpi-value">{% if budget.unlimited %}{{ budget.total|pesos }}{% else %}{{ budget.spent|pesos }}{% endif %}</span><span class="kpi-sub">{% if budget.unlimited %}{{ units_to_order|num }} unidades en {{ to_order }} referencia{{ to_order|pluralize }}{% else %}de {{ budget.total|pesos }} que se pedirían sin tope{% endif %}</span></span></div>
+  <div class="kpi"><span class="kpi-icon {% if risk %}warn{% else %}ok{% endif %}">{% icon 'calendar' 'lg' %}</span><span class="kpi-body"><span class="kpi-label">Riesgo de vencer</span><span class="kpi-value">{{ risk|num }}</span><span class="kpi-sub">Unidades que vencerían antes de usarse</span></span></div>
+</div>
+
+<section class="card" id="supuestos">
+  <div class="card-head"><div><h2>Supuestos que cambian la sugerencia</h2><p>Se aplican a todas las referencias. Si los cambia, las cantidades se recalculan.</p></div>
+    {% if is_admin %}<details class="confirm"><summary class="btn btn-sm">{% icon 'sliders' 'sm' %}Cambiar</summary>
+      <div class="confirm-panel"><form method="post">{% csrf_token %}<input type="hidden" name="accion" value="supuestos">
+        <div class="field"><label for="sup-nivel">Nivel de servicio</label>
+          <select class="input" id="sup-nivel" name="nivel_servicio">{% for z in service_levels %}<option value="{{ z }}"{% if z == params.nivel_servicio %} selected{% endif %}>{{ z }} %</option>{% endfor %}</select>
+          <small class="help">De cada 100 reposiciones, en cuántas se quiere no quedarse sin existencias.</small></div>
+        <div class="field"><label for="sup-presupuesto">Presupuesto de compra (pesos)</label>
+          <input class="input" id="sup-presupuesto" name="presupuesto" inputmode="numeric" value="{% localize off %}{{ params.presupuesto }}{% endlocalize %}">
+          <small class="help">Tope por revisión. 0 = sin tope.</small></div>
+        <button class="btn btn-primary btn-block" type="submit">Guardar supuestos</button></form></div></details>{% endif %}</div>
+  <div class="card-body">
+    <dl class="summary">
+      <div><dt>Nivel de servicio</dt><dd>{{ params.nivel_servicio }} %<span class="pron-sub">a mayor nivel, más reserva de seguridad</span></dd></div>
+      <div><dt>Presupuesto de compra</dt><dd>{% if budget.unlimited %}Sin tope{% else %}{{ budget.budget|cop }}{% endif %}<span class="pron-sub">{% if budget.what_if %}valor de prueba; el guardado es {% if budget.saved %}{{ budget.saved|cop }}{% else %}sin tope{% endif %}{% elif budget.unlimited %}no recorta la sugerencia{% else %}{{ budget.committed|cop }} ya en pedidos de esta revisión · quedan {{ budget.available|cop }}{% endif %}</span></dd></div>
+      <div><dt>Revisión del inventario</dt><dd>Cada {{ params.revision_dias }} días<span class="pron-sub">se suma al tiempo de entrega al calcular</span></dd></div>
+      <div><dt>Cada pedido cubre</dt><dd>{{ params.ciclo_dias }} días<span class="pron-sub">de consumo, además de la reserva</span></dd></div>
+      <div><dt>Margen antes de vencer</dt><dd>{{ params.margen_vencimiento_dias }} días<span class="pron-sub">no se pide lo que no alcanza a usarse</span></dd></div>
+    </dl>
+    <form class="pron-order" method="get"><label for="probar-presupuesto">Probar con otro presupuesto</label>
+      <input class="input w-sm" id="probar-presupuesto" name="presupuesto" inputmode="numeric" placeholder="8000000"{% if budget.what_if %} value="{% localize off %}{{ budget.budget|floatformat:"0u" }}{% endlocalize %}"{% endif %}>
+      <button class="btn btn-sm" type="submit">Ver el efecto</button>{% if budget.what_if %}<a class="btn btn-sm btn-ghost" href="{% url 'replenishment' %}">Quitar la prueba</a>{% endif %}</form>
+  </div>
+</section>
+
+{% if budget.restrictive %}<div class="callout warn">{% icon 'alert-triangle' %}<p>{% if budget.committed and budget.committed >= budget.budget %}<strong>El presupuesto ya está comprometido en pedidos abiertos.</strong> Los pedidos abiertos de este periodo de revisión suman {{ budget.committed|cop }} y el presupuesto es de {{ budget.budget|cop }}: no queda saldo para pedidos nuevos. Lo sugerido sin tope cuesta {{ budget.total|cop }}; para incluir alguna referencia, el presupuesto debe superar lo comprometido.{% else %}<strong>El presupuesto no alcanza para todo.</strong> {% if budget.committed %}De {{ budget.budget|cop }}, {{ budget.committed|cop }} ya están comprometidos en pedidos abiertos de este periodo de revisión. {% endif %}Con {{ budget.available|cop }} disponibles entran {{ budget.lines|length }} referencia{{ budget.lines|length|pluralize }} por {{ budget.spent|cop }}; lo sugerido sin tope cuesta {{ budget.total|cop }}. Se atiende primero lo que se agotaría antes frente a su tiempo de entrega.{% endif %}</p></div>{% endif %}
+
+<form method="post">{% csrf_token %}{{ token_form.token }}
+<section class="card" id="pedidos-sugeridos">
+  <div class="card-head"><div><h2>Qué pedir</h2><p>{% if can_order %}Ajuste las cantidades si lo necesita y prepare el pedido: queda en Pedidos como borrador. El envío al proveedor es simulado.{% else %}El perfil de Inventario prepara los pedidos; aquí puede consultarlos.{% endif %}</p></div>
+    {% if budget.lines %}<div class="chips"><span class="chip solid">{{ budget.lines|length }} referencia{{ budget.lines|length|pluralize }}</span><span class="chip plain">{{ budget.spent|cop }} estimados</span></div>{% endif %}</div>
+  {% if groups or orphans %}
+  <div class="table-wrap"><table class="mobile-records">
+    <thead><tr><th scope="col"><span class="sr-only">Incluir</span></th><th scope="col">Referencia y motivo</th><th scope="col">Alcanza hasta</th><th scope="col">Proveedor</th><th scope="col" class="num">Cantidad</th><th scope="col" class="num">Costo estimado</th></tr></thead>
+    <tbody>
+    {% for supplier, rows in groups %}{% for row in rows %}{% include 'aprendizaje/_order_row.html' with pl=row.plan %}{% endfor %}{% endfor %}
+    {% for row in orphans %}{% include 'aprendizaje/_order_row.html' with pl=row.plan choose_supplier=True %}{% endfor %}
+    </tbody>
+  </table></div>
+  {% if can_order %}<div class="card-foot"><div class="pron-order">
+    <label class="sr-only" for="nota-pedido">Observaciones</label><input class="input" id="nota-pedido" name="nota" maxlength="300" placeholder="Observaciones para el pedido (opcional)">
+    <button class="btn btn-primary" type="submit">{% icon 'check-circle' %}Preparar los pedidos seleccionados</button></div>
+    <p class="muted pron-note">Se prepara un pedido por proveedor. Las cantidades se redondean al empaque de compra de cada referencia.</p>
+  </div>{% endif %}
+  {% elif budget.excluded %}<div class="empty">{% icon 'dollar' %}<strong>Nada entra en el presupuesto disponible</strong>{% if budget.committed and budget.committed >= budget.budget %}Hay referencias por pedir, pero los pedidos abiertos de este periodo ya ocupan todo el presupuesto. Revise la lista de abajo o pruebe con un presupuesto mayor que lo comprometido.{% else %}Hay referencias por pedir, pero el presupuesto no alcanza para un empaque de ninguna. Revise la lista de abajo o ajuste el presupuesto.{% endif %}</div>
+  {% else %}<div class="empty is-ok">{% icon 'check-circle' %}<strong>Ninguna referencia necesita pedido hoy</strong>Lo disponible y lo que está en camino cubren el tiempo de entrega de todas. Revise abajo cómo va cada referencia.</div>{% endif %}
+</section>
+</form>
+
+{% if budget.excluded %}<section class="card" id="fuera-de-presupuesto">
+  <div class="card-head"><div><h2>Quedó por fuera del presupuesto</h2><p>Lo que la sugerencia pediría y no cabe en {{ budget.available|cop }}. Decida si se aplaza, se ajusta el presupuesto o se pide a mano.</p></div></div>
+  <div class="table-wrap"><table class="mobile-records">
+    <thead><tr><th scope="col">Referencia</th><th scope="col" class="num">Unidades sin pedir</th><th scope="col" class="num">Costo</th><th scope="col">Motivo</th></tr></thead>
+    <tbody>{% for x in budget.excluded %}<tr>
+      <td class="record-title" data-label="Referencia"><a class="cell-title" href="{% url 'forecast' x.plan.product.pk %}">{{ x.plan.product.name }}</a><small>{{ x.plan.product.code }}{% if x.plan.coverage_days is not None %} · alcanza {{ x.plan.coverage_label }}{% endif %}</small></td>
+      <td class="num" data-label="Unidades sin pedir">{{ x.quantity|num }}</td>
+      <td class="num" data-label="Costo">{% if x.cost is not None %}{{ x.cost|cop }}{% else %}sin costo conocido{% endif %}</td>
+      <td data-label="Motivo">{{ x.reason }}</td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+</section>{% endif %}
+
+<div class="section-heading"><div><h2>Cómo va cada referencia</h2><p>Ordenadas por urgencia. Abra una para ver su pronóstico y de dónde sale la sugerencia.</p></div>
+  <div class="search">{% icon 'search' %}<input class="input" type="search" placeholder="Buscar referencia" data-filter="#lista-referencias" aria-label="Buscar referencia"></div></div>
+<section class="card">
+  <ul class="prio-list" id="lista-referencias">
+  {% for pl in plans %}<li class="prio-item {{ pl.severity }}" data-filter-row><span class="prio-mark" aria-hidden="true"></span>
+    <div class="prio-body"><strong><a href="{% url 'forecast' pl.product.pk %}">{{ pl.product.name }}</a></strong>
+      <p>{{ pl.summary }}</p>
+      <div class="prio-meta"><span class="chip {{ pl.chip }}">{{ pl.status_label }}</span><span>{{ pl.product.code }}</span>
+        {% if pl.weeks %}<span>salen unas {{ pl.evidence.typical_label }} {{ pl.product.units }} por semana</span>{% endif %}
+        <span>{{ pl.available|num }} disponibles{% if pl.evidence.incoming %} y {{ pl.evidence.incoming|num }} en camino{% endif %}</span>
+        {% if pl.at_risk %}<span>{{ pl.at_risk|num }} podrían vencer sin usarse</span>{% endif %}
+        {% if not pl.enough and pl.weeks %}<span>historial insuficiente: sugerencia provisional</span>{% endif %}
+        {% if pl.weeks %}{% localize off %}<svg class="spark" viewBox="0 0 96 28" width="96" height="28" aria-hidden="true">{% for s in pl.spark %}<rect x="{{ s.x }}" y="{{ s.by }}" width="6" height="{{ s.bh }}" rx="1"{% if s.stockout %} class="is-out"{% endif %}></rect>{% endfor %}</svg>{% endlocalize %}{% endif %}</div></div>
+    <span class="prio-when">{% if pl.runout_on %}alcanza hasta el {{ pl.runout_on|date:"d/m/Y" }}{% elif pl.status == 'no_calculable' %}revisar a mano{% elif pl.coverage_capped %}sin agotamiento previsible{% elif pl.status == 'pedir_ya' %}sin existencias{% elif pl.status == 'sin_datos' %}sin historial{% else %}sin consumo reciente{% endif %}</span>
+    <a class="btn btn-sm prio-action" href="{% url 'forecast' pl.product.pk %}">Ver pronóstico</a></li>
+  {% empty %}<li><div class="empty">{% icon 'tag' %}<strong>No hay referencias activas</strong>Cree o active referencias en el catálogo para ver aquí su reposición.</div></li>{% endfor %}
+  </ul>
+</section>
+
+<section class="card">
+  <div class="card-head"><div><h2>Pedidos abiertos</h2><p>Sus unidades ya cuentan como «en camino»: no se vuelven a sugerir.</p></div><a class="btn btn-sm" href="{% url 'purchase_orders' %}">Ver todos</a></div>
+  <div class="table-wrap"><table class="mobile-records"><thead><tr><th scope="col">Pedido</th><th scope="col">Estado</th></tr></thead><tbody>{% for o in open_orders %}<tr>
+    <td class="record-title" data-label="Pedido"><a class="cell-title" href="{% url 'purchase_order' o.pk %}">{{ o.number }}</a><small>{{ o.supplier.name }} · {% for l in o.lines.all %}{{ l.quantity }} {{ l.product.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</small></td>
+    <td data-label="Estado">{% if o.status == 'draft' %}<span class="chip warn">Mensaje preparado, sin enviar</span>{% else %}<span class="chip info">Envío simulado{% if o.expected_on %} · llegada esperada {{ o.expected_on|date:"d/m" }}{% endif %}</span>{% endif %}</td>
+  </tr>{% empty %}<tr class="empty-row"><td colspan="2"><div class="empty">{% icon 'truck' %}<strong>Sin pedidos abiertos</strong>Prepare uno desde «Qué pedir» cuando una referencia lo necesite.</div></td></tr>{% endfor %}</tbody></table></div>
+</section>
+<p class="muted pron-note">Las sugerencias se calculan con los movimientos registrados en la plataforma (datos sintéticos) y se recalculan al preparar cada pedido. Muestran cómo funciona el cálculo; no garantizan exactitud y la decisión de compra es del equipo.</p>
+{% endblock %}

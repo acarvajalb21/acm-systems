@@ -1,0 +1,117 @@
+/* Resumen, resultados, agentes y recorrido guiado.
+   Solo ajustes sobre el vocabulario de app.css; cada bloque lleva el prefijo de su pantalla.
+
+   1. Resumen   2. Resultados   3. Agentes   4. Recorrido guiado   5. Celular */
+
+/* ------------------------------------------------------------------ 1. Resumen */
+.resumen-fecha { color: var(--tinta); font-weight: 600; }
+.resumen-cuerpo { margin-bottom: 0; }
+.resumen-lado > .card { margin-bottom: 0; }
+.resumen-pie { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; font-size: 13px; }
+.resumen-pie .actions { gap: 4px 18px; }
+/* La recomendación es la única acción principal de la página: una franja de acento la distingue de las listas. */
+.resumen-recomendacion { box-shadow: inset 3px 0 0 var(--acento); }
+.resumen-recomendacion.is-calm { box-shadow: inset 3px 0 0 var(--linea-fuerte); }
+.resumen-recomendacion h2 { color: var(--tinta-2); font-family: var(--fuente); font-size: 13px; font-weight: 500; }
+.resumen-accion { max-width: 44ch; margin: 6px 0 0; color: var(--tinta); font-family: var(--fuente-titulos); font-size: 21px; font-weight: 600; line-height: 1.25; }
+.resumen-sustento { max-width: 60ch; margin: 8px 0 16px; color: var(--tinta-2); font-size: 14px; }
+.resumen-riesgos .prio-item { grid-template-columns: 10px minmax(0, 1fr) auto; }
+.resumen-kpis { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+.resumen-kpis .kpi-label { min-height: 2.9em; line-height: 1.45; }
+.resumen-kpis .kpi-period { margin-bottom: 2px; }
+
+/* ------------------------------------------------------------------ 3. Agentes */
+.agentes-pasos { flex: 0 1 460px; margin: 0; }
+.agentes-resumen-texto { max-width: 90ch; margin: 0 0 16px; }
+.agent-item-body strong a { color: inherit; text-decoration-color: transparent; }
+/* Los agentes van en filas de una misma tabla: nombre y objetivo, disparador, propuesta y siguiente acción. */
+.agentes-lista { overflow: hidden; }
+.agentes-cabecera, .agentes-ficha > summary { display: grid; grid-template-columns: minmax(0, 2.3fr) minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 1.15fr) 22px; align-items: start; gap: 18px; padding: 14px 18px; }
+.agentes-cabecera { padding-block: 9px; border-bottom: 1px solid var(--linea); background: var(--superficie-2); color: var(--tinta-2); font-size: 12.5px; font-weight: 600; }
+.agentes-ficha + .agentes-ficha { border-top: 1px solid var(--linea-suave); }
+.agentes-ficha > summary { list-style: none; cursor: pointer; }
+.agentes-ficha > summary::-webkit-details-marker { display: none; }
+.agentes-ficha > summary:focus-visible { outline: var(--foco); outline-offset: -3px; }
+.agentes-ficha[open] > summary { background: var(--superficie-2); }
+.agentes-ficha[open] .debt-chevron { transform: rotate(180deg); }
+.agentes-ficha.is-paused .agentes-nombre strong, .agentes-ficha.is-paused .agentes-objetivo { color: var(--tinta-2); }
+.agentes-nombre { display: flex; align-items: flex-start; gap: 12px; min-width: 0; }
+.agentes-nombre > span:last-child { min-width: 0; }
+.agentes-nombre strong { display: block; font-size: 14.5px; }
+.agentes-nombre small { display: block; color: var(--tinta-2); font-size: 12.5px; }
+.agentes-objetivo { display: block; max-width: 62ch; margin-top: 5px; color: var(--tinta); font-size: 13.5px; }
+.agentes-dato { display: grid; justify-items: start; gap: 1px; min-width: 0; font-size: 13.5px; }
+.agentes-dato small { color: var(--tinta-2); font-size: 12.5px; }
+.agentes-dato small:not(:first-child) { margin-top: 7px; }
+.agentes-dato .chip { margin-top: 7px; }
+.agentes-siguiente { font-size: 13.5px; font-weight: 600; }
+.agentes-detalle { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 18px 36px; padding: 16px 18px 18px 58px; border-top: 1px solid var(--linea-suave); background: var(--superficie-2); }
+.agentes-detalle h3 { margin: 0 0 6px; font-family: var(--fuente); font-size: 13px; font-weight: 600; }
+.agentes-fuentes { display: grid; gap: 3px; margin: 0 0 12px; padding-left: 18px; font-size: 13.5px; }
+.agentes-detalle .agent-last { margin: 0; background: var(--superficie); font-size: 13.5px; }
+.agentes-primera { margin: 10px 0 0; font-size: 13.5px; }
+.agentes-acciones { margin-top: 14px; }
+.agentes-detalle .meta { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 18px; }
+@media (hover: hover) and (pointer: fine) {
+  .agentes-ficha > summary:hover { background: var(--superficie-2); }
+  .agent-item-body strong a:hover { color: var(--acento-fuerte); text-decoration-color: currentColor; }
+}
+/* Detalle de una propuesta. */
+.agentes-recorrido { padding: 14px 18px 12px; }
+.agentes-recorrido .stage-track { margin: 0 0 10px; font-size: 13.5px; }
+.agentes-recorrido p { margin: 0; color: var(--tinta-2); font-size: 13.5px; }
+.stage-track .agentes-omitido { text-decoration: line-through; text-decoration-color: var(--linea-fuerte); }
+.agentes-razon { max-width: 80ch; margin: 0 0 10px; font-size: 15px; }
+.agentes-evidencia .prio-item { grid-template-columns: 10px minmax(0, 1fr) auto; }
+.agentes-evidencia .prio-body strong { color: var(--tinta-2); font-size: 12.5px; font-weight: 500; }
+.agentes-evidencia .prio-body p { margin-top: 1px; color: var(--tinta); font-size: 14px; }
+.agentes-meta { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.agentes-resultado { margin: 14px 0 0; }
+.agentes-decidir { display: grid; gap: 10px; }
+.agentes-decidir .help { margin: 0; }
+.agentes-linea p { max-width: 80ch; margin: 2px 0 0; color: var(--tinta-2); font-size: 13.5px; }
+
+/* -------------------------------------------------------- 4. Recorrido guiado */
+/* Los pasos son una secuencia: número a la izquierda y una línea que los une. */
+.recorrido-pasos { margin: 0; padding: 6px 0; list-style: none; }
+.recorrido-paso { position: relative; display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 16px; padding: 18px 22px; scroll-margin-top: calc(var(--alto-barra) + 96px); }
+.recorrido-paso + .recorrido-paso { border-top: 1px solid var(--linea-suave); }
+.recorrido-paso::before { content: ""; position: absolute; left: 38px; top: 58px; bottom: -18px; width: 2px; background: var(--linea); }
+.recorrido-paso:last-child::before { display: none; }
+.recorrido-paso.is-done::before { background: var(--acento); }
+.recorrido-numero { position: relative; display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid var(--linea-fuerte); border-radius: 50%; background: var(--superficie); color: var(--tinta-2); font-family: var(--fuente-titulos); font-size: 17px; font-weight: 600; }
+.recorrido-paso.is-done .recorrido-numero { border-color: var(--acento); color: var(--acento-fuerte); }
+.recorrido-paso.is-current .recorrido-numero { border-color: var(--acento); background: var(--acento); color: var(--superficie); }
+.recorrido-paso.is-current { background: var(--superficie-2); }
+.recorrido-cuerpo { min-width: 0; }
+.recorrido-cuerpo h2 { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 19px; }
+.recorrido-mostrar { max-width: 80ch; margin: 6px 0 0; }
+.recorrido-mostrar strong { font-weight: 600; }
+.recorrido-guion { max-width: 78ch; margin: 10px 0 0; padding: 2px 0 2px 14px; border-left: 3px solid var(--linea-fuerte); color: var(--tinta-2); }
+.recorrido-rotulo { display: block; color: var(--tinta-2); font-size: 12.5px; font-weight: 600; }
+.recorrido-codigos { margin-top: 10px; }
+.recorrido-codigos ul { display: grid; gap: 4px; max-width: 78ch; margin: 8px 0 0; padding: 0; list-style: none; }
+.recorrido-codigos li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; padding: 6px 10px; border: 1px solid var(--linea); border-radius: var(--radio-control); background: var(--superficie); }
+.recorrido-codigo { overflow-wrap: anywhere; font-variant-numeric: tabular-nums; font-weight: 600; user-select: all; }
+.recorrido-codigos small { color: var(--tinta-2); }
+.recorrido-acciones { gap: 8px 16px; margin-top: 14px; }
+.recorrido-perfil { max-width: 78ch; margin: 14px 0 0; }
+
+/* ------------------------------------------------------------------ 5. Celular */
+@media (max-width: 760px) {
+  .resumen-kpis .kpi-label { min-height: 0; }
+  .resumen-accion { font-size: 19px; }
+  .resumen-recomendacion .actions .btn { width: 100%; }
+  .agentes-pasos { flex-basis: 100%; }
+  .agentes-recorrido { padding-inline: 14px; }
+  .agentes-recorrido .stage-track { font-size: 11.5px; }
+  .agentes-cabecera { display: none; }
+  .agentes-ficha > summary { grid-template-columns: minmax(0, 1fr) 22px; gap: 10px; padding: 14px; }
+  .agentes-ficha > summary > :not(.debt-chevron) { grid-column: 1; }
+  .agentes-ficha > summary > .debt-chevron { grid-column: 2; grid-row: 1; }
+  .agentes-detalle { grid-template-columns: minmax(0, 1fr); padding: 14px; }
+  .recorrido-paso { grid-template-columns: 30px minmax(0, 1fr); gap: 12px; padding: 16px 14px; }
+  .recorrido-paso::before { left: 28px; top: 52px; }
+  .recorrido-numero { width: 30px; height: 30px; font-size: 15px; }
+  .recorrido-acciones .btn { width: 100%; }
+}

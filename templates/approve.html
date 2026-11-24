@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}Aprobar solicitud{% endblock %}
+{% block crumbs %}<p class="crumbs"><a href="{% url 'requests' %}">{% icon 'arrow-left' 'sm' %} Solicitudes</a></p>{% endblock %}
+{% block heading %}Aprobar y reservar{% endblock %}
+{% block content %}
+<section class="card form-card">
+  <div class="card-body">
+    <dl class="summary">
+      <div><dt>Solicitante</dt><dd>{{ summary.requester.display_name }}</dd></div>
+      <div><dt>Referencia</dt><dd>{{ summary.product.name }}</dd></div>
+      <div><dt>Cantidad</dt><dd>{{ summary.quantity|qty:summary.product }}</dd></div>
+      <div><dt>Destino</dt><dd>{{ summary.purpose }}</dd></div>
+      {% if summary.needed_by %}<div><dt>Requerida para</dt><dd>{{ summary.needed_by|date:"d/m/Y" }}</dd></div>{% endif %}
+    </dl>
+    {% include '_form_errors.html' %}
+    {% if form.fields.batch.queryset %}
+    <form method="post" novalidate>{% csrf_token %}
+      {% for f in form.hidden_fields %}{{ f }}{% endfor %}
+      <div class="form-grid">{% include '_field.html' with f=form.batch wide=True %}</div>
+      <div class="form-actions">
+        <a class="btn btn-danger" href="{% url 'resolve_request' summary.pk 'reject' %}">Rechazar</a>
+        <button class="btn btn-primary" type="submit">{% icon 'bookmark' %}Reservar unidades</button>
+      </div>
+    </form>
+    {% else %}
+    <div class="callout warn">{% icon 'alert-triangle' %}<p>No hay lotes vigentes de esta referencia. Rechace la solicitud e indique la fecha estimada de llegada, o vuelva cuando se reciba mercancía.</p></div>
+    <div class="form-actions"><a class="btn btn-danger solid" href="{% url 'resolve_request' summary.pk 'reject' %}">Rechazar solicitud</a></div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

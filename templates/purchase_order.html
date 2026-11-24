@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% block title %}{{ order.number }}{% endblock %}
+{% block heading %}Pedido {{ order.number }}{% endblock %}
+{% block crumbs %}<p class="crumbs"><a href="{% url 'purchase_orders' %}">{% icon 'arrow-left' 'sm' %} Pedidos a proveedores</a></p>{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="card-body">
+    <div class="detail-head">
+      <div>
+        <h2>{{ order.supplier.name }}</h2>
+        <p class="muted">{{ order.get_source_display }} · preparado el {{ order.created_at|date:"d/m/Y H:i" }} por {{ order.created_by.display_name }}</p>
+        {% if order.status == 'draft' %}<span class="chip warn">Mensaje preparado</span>{% elif order.status == 'sent' %}<span class="chip info">Envío simulado registrado{% if order.sent_at %} el {{ order.sent_at|date:"d/m/Y" }}{% endif %}</span>{% elif order.status == 'received' %}<span class="chip ok">Recibido</span>{% else %}<span class="chip plain">Cancelado</span>{% endif %}
+      </div>
+      {% if can_act and order.open %}<div class="actions">
+        {% if order.status == 'draft' %}<details class="confirm"><summary class="btn">{% icon 'check' %}Registrar envío simulado</summary>
+          <div class="confirm-panel"><form method="post" action="{% url 'purchase_order_action' order.pk 'enviar' %}">{% csrf_token %}{{ token_form.token }}
+            <div class="field"><label for="llegada">Llegada esperada <span class="optional">opcional</span></label><input class="input" type="date" id="llegada" name="llegada" value="{{ order.expected_on|date:'Y-m-d' }}"></div>
+            <button class="btn btn-primary btn-block" type="submit">Registrar envío simulado</button></form></div></details>{% endif %}
+        <details class="confirm"><summary class="btn btn-ghost">Cerrar pedido</summary>
+          <div class="confirm-panel"><form method="post" action="{% url 'purchase_order_action' order.pk 'recibir' %}">{% csrf_token %}{{ token_form.token }}
+            <div class="field"><label for="nota-recibir">Nota <span class="optional">opcional</span></label><input class="input" id="nota-recibir" name="nota" maxlength="300" placeholder="Recibido con la factura…"></div>
+            <button class="btn btn-block" type="submit">Marcar como recibido</button></form>
+            <form method="post" action="{% url 'purchase_order_action' order.pk 'cancelar' %}" class="mt">{% csrf_token %}{{ token_form.token }}
+            <div class="field"><label for="nota-cancelar">Motivo de la cancelación</label><input class="input" id="nota-cancelar" name="nota" maxlength="300" required></div>
+            <button class="btn btn-danger btn-block" type="submit">Cancelar el pedido</button></form></div></details>
+      </div>{% endif %}
+    </div>
+    <dl class="meta">
+      {% if delivery.state != 'none' %}<div><dt>Mensaje al proveedor</dt><dd>{{ delivery.label }}</dd></div>{% endif %}
+      <div><dt>Correo del proveedor</dt><dd>{{ order.supplier.email|default:"No registrado" }}</dd></div>
+      <div><dt>Llegada esperada</dt><dd>{{ order.expected_on|date:"d/m/Y"|default:"—" }}</dd></div>
+      <div><dt>Unidades</dt><dd>{{ order.units|num }}</dd></div>
+      <div><dt>Costo estimado</dt><dd>{% if order.estimated_cost %}{{ order.estimated_cost|cop }}{% else %}—{% endif %}</dd></div>
+      {% if order.invoice %}<div><dt>Factura</dt><dd><a href="{% url 'invoice' order.invoice.pk %}">{{ order.invoice.number }}</a></dd></div>{% endif %}
+      {% if order.note %}<div class="span-all"><dt>Observaciones</dt><dd class="light">{{ order.note }}</dd></div>{% endif %}
+      {% if order.close_note %}<div class="span-all"><dt>Cierre</dt><dd class="light">{{ order.close_note }}{% if order.closed_by %} · {{ order.closed_by.display_name }}{% endif %}</dd></div>{% endif %}
+    </dl>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-head"><h2>Referencias</h2></div>
+  <div class="table-wrap"><table class="mobile-records">
+    <thead><tr><th scope="col">Referencia</th><th scope="col" class="num">Cantidad</th><th scope="col" class="num">Costo unitario estimado</th><th scope="col">Motivo</th></tr></thead>
+    <tbody>{% for l in order.lines.all %}<tr>
+      <td class="record-title" data-label="Referencia"><span class="cell-title">{{ l.product.name }}</span><small>{{ l.product.code }}{% if l.product.presentation %} · {{ l.product.presentation }}{% endif %}</small></td>
+      <td class="num" data-label="Cantidad">{{ l.quantity|qty:l.product }}</td>
+      <td class="num" data-label="Costo unitario estimado">{% if l.unit_cost %}{{ l.unit_cost|cop }}{% else %}<span class="faint">—</span>{% endif %}</td>
+      <td data-label="Motivo"><small>{{ l.reason|default:"—" }}</small></td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+
+<section class="card">
+  <div class="card-head"><div><h2>Texto para el proveedor</h2><p>{% if delivery.detail %}{{ delivery.detail }} {% endif %}El pedido se cierra solo cuando se recibe una factura que cita el número {{ order.number }} en «Orden de compra».</p></div></div>
+  <div class="card-body"><pre class="order-text">{{ text }}</pre></div>
+</section>
+{% endblock %}

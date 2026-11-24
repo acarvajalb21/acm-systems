@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block title %}Registrar pago{% endblock %}
+{% block crumbs %}<p class="crumbs"><a href="{% url 'invoice' invoice.pk %}">{% icon 'arrow-left' 'sm' %} Factura {{ invoice.number }}</a></p>{% endblock %}
+{% block heading %}Registrar pago · {{ invoice.supplier.name }}{% endblock %}
+{% block content %}
+<div class="grid-2">
+  <section class="card">
+    <div class="card-body">
+      <dl class="summary">
+        <div><dt>Factura</dt><dd>{{ invoice.number }}</dd></div>
+        <div><dt>Emisión</dt><dd>{{ invoice.issue_date|date:"d/m/Y" }}</dd></div>
+        <div><dt>Vencimiento</dt><dd>{{ invoice.due_date|date:"d/m/Y" }}</dd></div>
+        <div><dt>Total factura</dt><dd>{{ invoice.total|cop }}</dd></div>
+        <div><dt>Saldo pendiente</dt><dd>{{ offer.balance|cop }}</dd></div>
+      </dl>
+      {% include '_form_errors.html' %}
+      <form method="post" novalidate data-payment data-issue="{{ invoice.issue_date|date:'Y-m-d' }}" data-base="{{ offer.base|stringformat:'s' }}" data-total="{{ offer.balance|stringformat:'s' }}" data-tiers="[{% if not invoice.discount_taken %}{% for d, p in offer.tiers %}[{{ d }},&quot;{{ p|stringformat:'s' }}&quot;]{% if not forloop.last %},{% endif %}{% endfor %}{% endif %}]">{% csrf_token %}
+        {% for f in form.hidden_fields %}{{ f }}{% endfor %}
+        <div class="form-grid three">{% for f in form.visible_fields %}{% include '_field.html' with f=f %}{% endfor %}</div>
+        <div class="totals">
+          <div><span>Días desde la emisión</span><strong id="p-days">{{ offer.elapsed }} días</strong></div>
+          <div><span>Descuento aplicable</span><strong id="p-percent">{{ offer.percent|pct }}</strong></div>
+          <div><span>Valor del descuento</span><strong id="p-discount">{{ offer.amount|cop }}</strong></div>
+          <div class="grand"><span>Valor a pagar</span><strong id="p-due">{{ offer.due|cop }}</strong></div>
+        </div>
+        <div class="form-actions"><a class="btn btn-ghost" href="{% url 'invoice' invoice.pk %}">Cancelar</a><a class="btn" href="{% url 'payment_new' %}?facturas={{ invoice.pk }}&modo=pagar">Abono parcial o con soporte</a><button class="btn btn-primary" type="submit">{% icon 'credit-card' %}Pagar el saldo</button></div>
+      </form>
+    </div>
+  </section>
+  <section class="card">
+    <div class="card-head"><div><h2>Descuento por pronto pago</h2><p>Condiciones vigentes al validar la factura · base: {% if invoice.terms.base == 'total' %}total de la factura{% else %}subtotal antes de IVA{% endif %} ({{ offer.base|cop }}).</p></div></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th scope="col">Si paga hasta el</th><th scope="col" class="num">Descuento</th><th scope="col" class="num">Valor</th><th scope="col"><span class="sr-only">Vigencia</span></th></tr></thead>
+      <tbody>{% for s in schedule %}<tr>
+        <td>{{ s.until|date:"d/m/Y" }}<small>Día {{ s.days }} desde la emisión</small></td>
+        <td class="num">{{ s.percent|pct }}</td>
+        <td class="num strong">{{ s.amount|cop }}</td>
+        <td>{% if s.open %}<span class="chip ok">Vigente</span>{% else %}<span class="chip">Cerrado</span>{% endif %}</td>
+      </tr>{% empty %}<tr><td colspan="4"><div class="empty">{% icon 'percent' %}<strong>Sin descuento pactado</strong>Para las próximas facturas, configure los descuentos en las condiciones del proveedor.</div></td></tr>{% endfor %}</tbody>
+    </table></div>
+    <div class="card-body"><p class="help">Plazo de pago del proveedor: {{ invoice.terms.payment_days|default:"—" }} días. El cálculo usa días calendario desde la fecha de emisión.</p></div>
+  </section>
+</div>
+{% endblock %}

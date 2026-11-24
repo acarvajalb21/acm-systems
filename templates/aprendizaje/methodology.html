@@ -1,0 +1,173 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Metodología{% endblock %}
+{% block heading %}Metodología{% endblock %}
+{% block estilos %}<link rel="stylesheet" href="{% static 'modulos/pronosticos.css' %}">{% endblock %}
+{% block content %}
+<div class="page-head">
+  <p>Cómo están hechos y cómo se evalúan los pronósticos y modelos de la plataforma. Las cifras de esta página se calculan al abrirla, con los datos sintéticos de la demostración (actualizado el {{ updated|date:"d/m/Y H:i" }}). Demuestran el funcionamiento y el método; no prueban eficacia en una operación real.</p>
+  <div class="actions"><a class="btn" href="{% url 'learning' %}">{% icon 'eye' %}Lo aprendido</a></div>
+</div>
+
+<section class="card">
+  <div class="card-head"><div><h2>1. Qué es cada pieza</h2><p>Cuatro clases distintas que no deben confundirse.</p></div></div>
+  <div class="table-wrap"><table class="mobile-records">
+    <thead><tr><th scope="col">Pieza</th><th scope="col">Clase</th><th scope="col">Qué hace</th><th scope="col">Qué no hace</th></tr></thead>
+    <tbody>
+      <tr><td class="record-title" data-label="Pieza">Punto de pedido, cantidad, tope por vencimiento y recorte por presupuesto</td><td data-label="Clase"><span class="chip plain">Regla automática</span></td><td data-label="Qué hace">Aplica una política de revisión periódica con parámetros visibles.</td><td data-label="Qué no hace">No aprende ni se ajusta sola.</td></tr>
+      <tr><td class="record-title" data-label="Pieza">Agentes (reposición, vencimientos, solicitudes, pronto pago, conciliación, cobranza)</td><td data-label="Clase"><span class="chip plain">Regla automática</span></td><td data-label="Qué hace">Revisan los datos y proponen acciones; se recalculan al aprobar.</td><td data-label="Qué no hace">No ejecutan sin la aprobación de una persona con el perfil debido.</td></tr>
+      <tr><td class="record-title" data-label="Pieza">Pronóstico de consumo por referencia</td><td data-label="Clase"><span class="chip plain">Método estadístico</span></td><td data-label="Qué hace">Promedio, último valor, medias móviles, suavizado exponencial, Croston-SBA y misma semana del año anterior.</td><td data-label="Qué no hace">No tienen parámetros ajustados con los datos.</td></tr>
+      <tr><td class="record-title" data-label="Pieza">Regresión ridge global</td><td data-label="Clase"><span class="chip info">Modelo entrenado</span></td><td data-label="Qué hace">Un solo juego de {{ k.ridge_features }} coeficientes para todas las referencias; compite con los métodos sencillos.</td><td data-label="Qué no hace">No se usa si un método sencillo tiene menor error de selección.</td></tr>
+      <tr><td class="record-title" data-label="Pieza">Modelo de pagos</td><td data-label="Clase"><span class="chip info">Modelo entrenado</span></td><td data-label="Qué hace">Regresión logística en línea que puntúa a qué cliente corresponde un ingreso.</td><td data-label="Qué no hace">No aplica pagos; su puntaje no es una probabilidad.</td></tr>
+      <tr><td class="record-title" data-label="Pieza">Elección de estrategia de cobranza</td><td data-label="Clase"><span class="chip plain">Método estadístico</span></td><td data-label="Qué hace">Asignación adaptativa (muestreo de Thompson) entre {{ arms }} combinaciones de tono y momento.</td><td data-label="Qué no hace">No estima efectos causales.</td></tr>
+      <tr><td class="record-title" data-label="Pieza">Copiloto</td><td data-label="Clase"><span class="chip plain">Reglas y plantillas; IA generativa solo si se configura</span></td><td data-label="Qué hace">Consulta las mismas funciones de esta plataforma y redacta la respuesta; indica en pantalla con qué motor respondió.</td><td data-label="Qué no hace">No calcula pronósticos ni decide: cita lo que calculan las piezas anteriores.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="card">
+  <div class="card-head"><div><h2>2. Datos del pronóstico</h2><p>Unidad de análisis: referencia × semana cerrada (lunes a domingo).</p></div></div>
+  <div class="card-body">
+    <dl class="summary">
+      <div><dt>Referencias con historial</dt><dd>{{ rep.plans|length }}<span class="pron-sub">{{ rep.enough|length }} con {{ k.min_weeks }} semanas utilizables o más</span></dd></div>
+      <div><dt>Semanas observadas</dt><dd>{{ rep.total_weeks|num }}<span class="pron-sub">sumando todas las referencias</span></dd></div>
+      <div><dt>Semanas sin existencias</dt><dd>{{ rep.stockout_weeks|num }}<span class="pron-sub">censuradas: fuera del ajuste y de la evaluación</span></dd></div>
+      <div><dt>Salidas observadas</dt><dd>{{ rep.observed_units|num }}<span class="pron-sub">unidades despachadas o entregadas</span></dd></div>
+      <div><dt>Demanda no atendida registrada</dt><dd>{{ rep.unmet_units|num }}<span class="pron-sub">unidades de solicitudes rechazadas</span></dd></div>
+    </dl>
+    <ul class="pron-list">
+      <li><strong>Salidas no es demanda.</strong> La serie mide lo que se despachó. Una semana que terminó sin existencias y sin salidas está censurada: no se sabe cuánto se habría consumido, así que se excluye en lugar de contarla como cero.</li>
+      <li><strong>Demanda no atendida.</strong> Las solicitudes rechazadas se registran aparte{% if params.incluir_rechazadas %} y se suman al consumo de su semana (parámetro activo){% else %} y hoy no se suman al consumo (parámetro inactivo){% endif %}. Es una cota inferior: lo que nadie solicitó no queda registrado.</li>
+      <li><strong>Límite conocido.</strong> Una semana que agotó existencias pero tuvo salidas se toma como observada, aunque su consumo pudo quedar recortado.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-head"><div><h2>3. Diseño de validación</h2><p>Separación temporal por referencia; nunca se barajan las semanas.</p></div></div>
+  <div class="card-body">
+    <svg class="pron-windows" viewBox="0 0 600 46" role="img" aria-label="Entrenamiento al inicio, selección en la ventana intermedia y prueba final en las últimas semanas">
+      <rect class="train" x="0" y="4" width="340" height="14" rx="2"></rect><text x="0" y="36">entrenamiento (inicio)</text>
+      <rect class="selection" x="344" y="4" width="166" height="14" rx="2"></rect><text x="344" y="36">selección: hasta {{ k.select_max }} sem.</text>
+      <rect class="test" x="514" y="4" width="86" height="14" rx="2"></rect><text x="600" y="36" text-anchor="end">prueba: {{ k.test }} sem.</text></svg>
+    <ul class="pron-list">
+      <li><strong>Origen móvil.</strong> En cada origen el pronóstico usa solo las semanas anteriores; lo posterior no interviene. Una prueba automática altera el futuro y comprueba que el pronóstico no cambia.</li>
+      <li><strong>Selección.</strong> El método de cada referencia se elige por menor error absoluto medio en la ventana de selección (hasta {{ k.select_max }} semanas antes de la prueba). En empate gana el más simple.</li>
+      <li><strong>Prueba final.</strong> Las últimas {{ k.test }} semanas utilizables no se miran al elegir. El error que se muestra como desempeño es el de esa ventana, con su número de pronósticos.</li>
+      <li><strong>Horizonte de la decisión.</strong> Se evalúa a una semana y también el acumulado de H semanas, con H = techo((tiempo de entrega + revisión) / 7), porque el punto de pedido depende del consumo de todo ese periodo. La elección usa el horizonte H si hay al menos {{ k.min_select }} pronósticos de selección; si no, el de una semana.{% if horizons %} Hoy: {% for h, n in horizons %}{{ n }} referencia{{ n|pluralize }} con H = {{ h }}{% if not forloop.last %}, {% endif %}{% endfor %}.{% endif %}</li>
+      <li><strong>Historial corto.</strong> Con menos de {{ k.full_weeks }} semanas la prueba se reduce a {{ k.test_reduced }}; con menos de {{ k.min_weeks }} no se elige ni se prueba: se usa el promedio como respaldo y se marca «historial insuficiente». Hoy: {{ reduced }} referencia{{ reduced|pluralize }} con ventanas reducidas y {{ short }} con historial insuficiente.</li>
+      <li><strong>Modelo entrenado sin fuga.</strong> Los coeficientes ridge que pronostican un origen se ajustan solo con filas, de cualquier referencia, cuya ventana objetivo terminó antes de ese origen. Rasgos: rezagos 1 a 4, medias de 4, 8 y 13 semanas, misma semana del año anterior (con indicador de existencia), seno y coseno de la época del año y proporción de semanas en cero; todo escalado por la media de la referencia hasta el origen. Penalización fija ({{ k.ridge_lambda }}) y tope fijo de valores escalados ({{ k.ridge_cap }}): no se ajustan con los datos.</li>
+      <li><strong>Dependencia.</strong> Los pronósticos acumulados de orígenes consecutivos se solapan. Los «n» son conteos de pronósticos, no tamaños de muestra independientes.</li>
+    </ul>
+    <h3 class="pron-h3">Candidatos</h3>
+    <div class="chips">{% for c in k.candidates %}<span class="chip {% if c.kind == 'entrenado' %}info{% else %}plain{% endif %}">{{ c.label }}</span>{% endfor %}</div>
+    <p class="muted pron-note">Croston-SBA compite cuando al menos el {{ k.intermittent }} % de las semanas están en cero; la misma semana del año anterior, con {{ k.min_seasonal }} semanas utilizables o más.</p>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-head"><div><h2>4. Métricas</h2><p>Error = observado − pronóstico.</p></div></div>
+  <div class="card-body"><dl class="meta">
+    <div><dt>Error absoluto medio (MAE)</dt><dd>promedio de |error|<span class="pron-sub">en unidades; menor es mejor</span></dd></div>
+    <div><dt>Sesgo</dt><dd>promedio del error<span class="pron-sub">positivo: se pronosticó de menos; ideal cerca de cero</span></dd></div>
+    <div><dt>Error relativo (WAPE)</dt><dd>Σ|error| / Σ observado<span class="pron-sub">si Σ observado = 0 no está definido: se dice así y no se promedia</span></dd></div>
+    <div><dt>Cobertura del intervalo</dt><dd>observados dentro / pronósticos de prueba<span class="pron-sub">para un intervalo del 80 % se espera cerca de 80 %</span></dd></div>
+  </dl>
+  <p class="muted pron-note">No se informa una «precisión» en porcentaje: con consumos bajos o en cero no tiene una definición estable.</p></div>
+</section>
+
+<section class="card">
+  <div class="card-head"><div><h2>5. Resultados del pronóstico</h2><p>{{ rep.comparison.refs }} referencia{{ rep.comparison.refs|pluralize }} con historial suficiente, al horizonte de la decisión.</p></div></div>
+  {% if rep.comparison.refs %}
+  <div class="table-wrap"><table class="mobile-records pron-table">
+    <thead><tr><th scope="col">Candidato</th><th scope="col" class="num">Referencias en las que compitió</th><th scope="col" class="num">Elegido en</th><th scope="col" class="num">Error frente al promedio, selección</th><th scope="col" class="num">Error frente al promedio, prueba</th><th scope="col" class="num">Error relativo en prueba</th></tr></thead>
+    <tbody>{% for r in rep.comparison.rows %}<tr{% if r.method == 'elegido' %} class="is-chosen"{% endif %}>
+      <td class="record-title" data-label="Candidato"><span class="cell-title">{{ r.label }}</span>{% if r.kind_label %}<small>{{ r.kind_label }}</small>{% endif %}</td>
+      <td class="num" data-label="Referencias en las que compitió">{{ r.refs }}</td>
+      <td class="num" data-label="Elegido en">{{ r.chosen }}</td>
+      <td class="num" data-label="Error frente al promedio, selección">{% if r.sel_rel is not None %}{{ r.sel_rel|floatformat:2 }}{% else %}—{% endif %}</td>
+      <td class="num" data-label="Error frente al promedio, prueba">{% if r.test_rel is not None %}{{ r.test_rel|floatformat:2 }}{% else %}—{% endif %}<small>n = {{ r.test_n }}</small></td>
+      <td class="num" data-label="Error relativo en prueba">{% if r.test_wape is not None %}{{ r.test_wape|floatformat:0 }} %{% else %}no definido{% endif %}</td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+  <div class="card-body">
+    <p class="muted pron-note">«Error frente al promedio» = suma de errores absolutos del candidato dividida por la del promedio simple, en las mismas referencias y pronósticos (1,00 = igual; menos de 1 = se equivocó menos). Cada candidato compite en referencias distintas, así que las filas no son comparables entre sí salvo contra el promedio. La fila resaltada mide el procedimiento completo: el método elegido en cada referencia. La columna de selección está sesgada a favor del elegido, porque con ella se eligió; la de prueba no.</p>
+    {% if rep.comparison.ridge %}<div class="callout">{% icon 'info' %}<p><strong>Modelo entrenado frente a métodos sencillos.</strong> La regresión ridge global compitió en {{ rep.comparison.ridge.refs }} referencia{{ rep.comparison.ridge.refs|pluralize }} y fue elegida en {{ rep.comparison.ridge.chosen }}. Su error frente al promedio fue {{ rep.comparison.ridge.sel_rel|floatformat:2 }} en selección y {% if rep.comparison.ridge.test_rel is not None %}{{ rep.comparison.ridge.test_rel|floatformat:2 }}{% else %}no medible{% endif %} en prueba. {% if not rep.comparison.ridge.chosen %}No ganó en ninguna referencia: se usan los métodos sencillos.{% endif %}</p></div>
+    {% else %}<p class="muted pron-note">El modelo entrenado no compitió: no había datos de entrenamiento suficientes antes de las ventanas de selección.</p>{% endif %}
+    <dl class="summary">
+      <div><dt>Cobertura del intervalo del 80 %, horizonte H</dt><dd>{% if rep.coverage.h.n %}{{ rep.coverage.h.inside }} de {{ rep.coverage.h.n }} ({{ rep.coverage.h.share|floatformat:0 }} %){% else %}sin medir{% endif %}<span class="pron-sub">{{ rep.coverage.h.refs }} referencia{{ rep.coverage.h.refs|pluralize }}, ventana de prueba</span></dd></div>
+      <div><dt>Cobertura a una semana</dt><dd>{% if rep.coverage.week.n %}{{ rep.coverage.week.inside }} de {{ rep.coverage.week.n }} ({{ rep.coverage.week.share|floatformat:0 }} %){% else %}sin medir{% endif %}<span class="pron-sub">{{ rep.coverage.week.refs }} referencia{{ rep.coverage.week.refs|pluralize }}, ventana de prueba</span></dd></div>
+      <div><dt>Registro prospectivo</dt><dd>{% if rep.acc.n %}MAE {{ rep.acc.mae|floatformat:1 }} · sesgo {{ rep.acc.bias|floatformat:1 }}{% else %}sin semanas cerradas{% endif %}<span class="pron-sub">{% if rep.acc.n %}{{ rep.acc.n }} pronóstico{{ rep.acc.n|pluralize }} guardado{{ rep.acc.n|pluralize }} antes de conocer la semana{% if rep.acc.interval_n %}; {{ rep.acc.inside }} de {{ rep.acc.interval_n }} dentro del intervalo{% endif %}{% else %}se llena al cerrar cada semana{% endif %}</span></dd></div>
+    </dl>
+    <p class="muted pron-note">Intervalo del 80 % = pronóstico más los cuantiles empíricos 10 % y 90 % de los errores de selección del método elegido, para el mismo horizonte. El intervalo siempre contiene al pronóstico: si todos los errores quedaron de un lado (método sesgado), el límite de ese lado es el propio pronóstico, y la cobertura se mide con esa misma regla. Con pocas observaciones por referencia la cobertura medida es inestable; por eso se suma entre referencias y se muestra con su «n».</p>
+  </div>
+  {% else %}<div class="empty">{% icon 'layers' %}<strong>Sin referencias con historial suficiente</strong>La comparación aparece cuando alguna referencia reúne {{ k.min_weeks }} semanas utilizables.</div>{% endif %}
+</section>
+
+<section class="card">
+  <div class="card-head"><div><h2>6. Del pronóstico a la sugerencia de pedido</h2><p>Regla automática con supuestos editables.</p></div></div>
+  <div class="card-body">
+    <dl class="summary">
+      <div><dt>Nivel de servicio</dt><dd>{{ params.nivel_servicio }} %<span class="pron-sub">probabilidad de no agotarse en el periodo de protección</span></dd></div>
+      <div><dt>Presupuesto de compra</dt><dd>{% if params.presupuesto %}{{ params.presupuesto|cop }}{% else %}Sin tope{% endif %}<span class="pron-sub">por periodo de revisión</span></dd></div>
+      <div><dt>Revisión · ciclo</dt><dd>{{ params.revision_dias }} · {{ params.ciclo_dias }} días</dd></div>
+      <div><dt>Seguridad con cuantil empírico</dt><dd>{{ safety.empirico|default:0 }} referencia{{ safety.empirico|default:0|pluralize }}<span class="pron-sub">{{ safety.normal|default:0 }} con aproximación normal</span></dd></div>
+    </dl>
+    <ul class="pron-list">
+      <li><strong>Posición.</strong> Disponible (físico − reservado de lotes vigentes) + por recibir de facturas no anuladas + pedidos abiertos sin factura vinculada. Cada unidad cuenta una vez; las reservas no se restan de nuevo; las solicitudes pendientes sin reservar se muestran, pero no se restan.</li>
+      <li><strong>Punto de pedido.</strong> Consumo esperado en el periodo de protección más inventario de seguridad. Con {{ k.min_quantile }} errores acumulados o más, la seguridad es el cuantil empírico del nivel de servicio; si no, z · RMSE a una semana · √H, y se indica cuál se usó. Con pocas observaciones, un cuantil del 95 % al 99 % queda muy cerca del mayor error visto.</li>
+      <li><strong>Tiempo de entrega.</strong> Mediana observada de cada proveedor (fecha de pedido a primera recepción) o el parámetro ({{ params.tiempo_entrega_dias }} días) si no hay registros.</li>
+      <li><strong>Sin consumo reciente.</strong> Una tasa esperada por debajo de {{ k.min_rate }} unidades por semana se trata como «sin consumo reciente»: no se proyecta cobertura ni fecha de agotamiento y no se sugiere pedir. Ninguna cobertura se proyecta más allá de {{ k.max_coverage }} días («más de 10 años»). Si una referencia no se puede calcular, queda marcada como «no calculable» con su motivo y las demás se calculan igual.</li>
+      <li><strong>Cantidad.</strong> Lleva la posición al nivel objetivo, redondeada al empaque de compra y limitada por lo que alcanza a usarse antes del vencimiento (margen de {{ params.margen_vencimiento_dias }} días).</li>
+      <li><strong>Presupuesto.</strong> Si hay tope, se descuenta lo ya comprometido en pedidos abiertos de la revisión vigente y se atiende primero lo más urgente (días de cobertura menos tiempo de entrega). Se recorta en múltiplos de empaque y lo que queda por fuera se lista con su motivo.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-head"><div><h2>7. Modelo de pagos</h2><p>Unidad: ingreso bancario identificado por contabilidad.</p></div></div>
+  <div class="card-body">
+    <dl class="summary">
+      <div><dt>Ejemplos vigentes</dt><dd>{{ pagos.examples }}<span class="pron-sub">opina desde {{ pagos_k.min_examples }}; {{ pagos.voided }} anulado{{ pagos.voided|pluralize }} por corrección</span></dd></div>
+      <div><dt>Acierto del primer candidato</dt><dd>{% if pagos.eval_n %}{{ pagos.eval_hits }} de {{ pagos.eval_n }}{% else %}sin medir{% endif %}<span class="pron-sub">evaluación secuencial, ya entrenado</span></dd></div>
+      <div><dt>Reglas sin el modelo</dt><dd>{% if pagos.eval_n %}{{ pagos.rules_hits }} de {{ pagos.eval_n }}{% else %}sin medir{% endif %}<span class="pron-sub">mismos ingresos; {{ pagos.rules_none }} sin sugerencia única</span></dd></div>
+      <div><dt>Rasgos con peso</dt><dd>{{ pagos.features|num }}<span class="pron-sub">binarios: menciones, titular, valores, palabras</span></dd></div>
+    </dl>
+    <ul class="pron-list">
+      <li><strong>Evaluación secuencial.</strong> Para cada ingreso, el modelo predice con lo que sabía antes de esa identificación, se anota si acertó y luego aprende. El vínculo pagador–cliente que crea la propia identificación y los pagos posteriores no entran en la predicción anotada.</li>
+      <li><strong>Correcciones.</strong> Si una aplicación se revierte o el ingreso cambia de cliente, el ejemplo se marca como anulado y el modelo se reconstruye con el historial vigente. Una prueba automática verifica que los pesos quedan iguales a los de un modelo que nunca vio ese ejemplo.</li>
+      <li><strong>Puntaje sin calibrar.</strong> La salida es un puntaje de 0 a 100 que ordena candidatos; no se presenta como probabilidad. Junto a él se muestra la tasa de acierto medida por tramos; con menos de {{ pagos_k.few }} casos en un tramo se advierte.</li>
+      <li><strong>Ajuste.</strong> Descenso de gradiente por ejemplo (tasa {{ pagos_k.lr }}, penalización {{ pagos_k.l2 }}, {{ pagos_k.epochs }} pasadas), con los demás clientes con cartera abierta como contraejemplos. Hiperparámetros fijos.</li>
+    </ul>
+    <div class="table-wrap"><table class="mobile-records"><thead><tr><th scope="col">Puntaje del modelo</th><th scope="col" class="num">Casos</th><th scope="col" class="num">Aciertos</th><th scope="col">Tasa medida</th></tr></thead>
+      <tbody>{% for r in pagos.reliability %}<tr><td class="record-title" data-label="Puntaje del modelo">{{ r.label }}</td><td class="num" data-label="Casos">{{ r.n }}</td><td class="num" data-label="Aciertos">{{ r.hits }}</td><td data-label="Tasa medida">{% if r.n %}{{ r.rate|floatformat:0 }} %{% if r.few %} (pocos casos){% endif %}{% else %}sin casos{% endif %}</td></tr>{% endfor %}</tbody></table></div>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-head"><div><h2>8. Cobranza</h2><p>Unidad: recordatorio con envío registrado (simulado) y ventana cumplida.</p></div></div>
+  <div class="card-body">
+    <dl class="summary">
+      <div><dt>Evaluados</dt><dd>{{ cobranza.evaluated }}<span class="pron-sub">{{ cobranza.paid }} con pago o abono en la ventana</span></dd></div>
+      <div><dt>Con la ventana abierta</dt><dd>{{ cobranza.pending }}<span class="pron-sub">aún no se evalúan</span></dd></div>
+      <div><dt>Solo preparados</dt><dd>{{ cobranza.prepared_only }}<span class="pron-sub">sin envío registrado: fuera del aprendizaje</span></dd></div>
+      <div><dt>Referencia sin recordatorio</dt><dd>{% if cobranza.reference_total.n %}{{ cobranza.reference_total.paid }} de {{ cobranza.reference_total.n }}{% else %}sin datos{% endif %}<span class="pron-sub">facturas a {{ cobranza.reference_days }} días de mora con pago en una ventana igual</span></dd></div>
+    </dl>
+    <ul class="pron-list">
+      <li><strong>Resultado.</strong> Pagó, abonó o no pagó dentro de los {{ cobranza.window }} días siguientes al envío. Se evalúa solo al cumplirse la ventana; un pago posterior no cuenta.</li>
+      <li><strong>Sin lenguaje causal.</strong> {{ cobranza.caveat }} No hay asignación aleatoria ni grupo de control: la tasa sin recordatorio es una referencia descriptiva de facturas que pueden ser distintas.</li>
+      <li><strong>Elección.</strong> Por segmento (persona o empresa × historial de pago) cada estrategia tiene una creencia Beta que parte de un criterio inicial suave y se actualiza con los recordatorios evaluados; se elige por muestreo, con semilla estable por cliente y semana.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-head"><div><h2>9. Límites y reproducibilidad</h2></div></div>
+  <div class="card-body"><ul class="pron-list">
+    <li><strong>Datos sintéticos.</strong> El escenario se genera con reglas conocidas; un buen resultado aquí no anticipa el desempeño con datos de una operación real.</li>
+    <li><strong>Pocas observaciones por referencia.</strong> Ventanas de {{ k.test }} semanas dan estimaciones ruidosas; por eso las cifras van con su «n» y se suman entre referencias.</li>
+    <li><strong>Sin costos de faltante ni de mantener inventario.</strong> El nivel de servicio se fija como supuesto; no se optimiza un costo total.</li>
+    <li><strong>Reproducible.</strong> Todo es Python puro y determinista: mismos datos, mismos resultados. Los hiperparámetros son fijos y están en el código (módulos series, reposicion, pagos y cobranza de la aplicación «aprendizaje»); las propiedades descritas aquí se comprueban con sus pruebas automáticas.</li>
+  </ul></div>
+</section>
+{% endblock %}

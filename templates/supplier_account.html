@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block crumbs %}<p class="crumbs"><a href="{% url 'suppliers' %}">Proveedores</a> / NIT {{ supplier.nit_display }}</p>{% endblock %}
+{% block heading %}{{ supplier.name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <p>Todas las facturas del proveedor con su saldo, notas crédito y pagos.</p>
+  <div class="actions">
+    <a class="btn" href="{% url 'credit_note_new' supplier.pk %}">{% icon 'file-plus' %}Nota crédito</a>
+    <a class="btn" href="{% url 'edit_supplier' supplier.pk %}">{% icon 'sliders' %}Condiciones</a>
+    <a class="btn btn-primary" href="{% url 'payables' %}?proveedor={{ supplier.pk }}">{% icon 'credit-card' %}Pagar facturas</a>
+  </div>
+</div>
+<div class="kpis">
+  <div class="kpi"><span class="kpi-icon">{% icon 'credit-card' 'lg' %}</span><span class="kpi-body"><span class="kpi-label">Saldo</span><span class="kpi-value">{{ balance|pesos }}</span><span class="kpi-sub">{{ open_ids|length }} factura{{ open_ids|length|pluralize }} con saldo</span></span></div>
+  <div class="kpi"><span class="kpi-icon {% if overdue %}bad{% else %}ok{% endif %}">{% icon 'clock' 'lg' %}</span><span class="kpi-body"><span class="kpi-label">Vencido</span><span class="kpi-value">{{ overdue|pesos }}</span><span class="kpi-sub">Al {{ today|date:"d/m/Y" }}</span></span></div>
+  <div class="kpi"><span class="kpi-icon warn">{% icon 'percent' 'lg' %}</span><span class="kpi-body"><span class="kpi-label">Descuento si se paga hoy</span><span class="kpi-value">{{ offer|pesos }}</span><span class="kpi-sub">Notas crédito disponibles: {{ available|pesos }}</span></span></div>
+</div>
+<section class="card">
+  <div class="card-head"><div><h2>Facturas</h2><p>Incluye las facturas registradas como saldos de apertura.</p></div></div>
+  <div class="table-wrap"><table class="mobile-records">
+    <thead><tr><th scope="col">Factura</th><th scope="col">Emisión</th><th scope="col">Vence</th><th scope="col" class="num">Total</th><th scope="col" class="num">Pagos y descuentos</th><th scope="col" class="num">Notas crédito y ajustes</th><th scope="col" class="num">Saldo</th></tr></thead>
+    <tbody>{% for inv in invoices %}<tr>
+      <td class="record-title" data-label="Factura"><a class="cell-title" href="{% url 'invoice' inv.pk %}">{{ inv.number }}</a><small>{{ inv.get_source_display }}</small></td>
+      <td class="nowrap" data-label="Emisión">{{ inv.issue_date|date:"d/m/Y" }}</td>
+      <td class="nowrap" data-label="Vence">{{ inv.due_date|date:"d/m/Y" }}{% if inv.pk in open_ids and inv.due_date < today %}<small><span class="chip bad">Vencida</span></small>{% endif %}</td>
+      <td class="num" data-label="Total">{{ inv.total|cop }}</td>
+      <td class="num" data-label="Pagos y descuentos">{% if inv.paid_sum or inv.discount_sum %}{{ inv.paid_sum|cop }}{% if inv.discount_sum %}<small>descuento {{ inv.discount_sum|cop }}</small>{% endif %}{% else %}—{% endif %}</td>
+      <td class="num" data-label="Notas crédito y ajustes">{% if inv.credit_sum or inv.adjust_sum %}{{ inv.credit_sum|cop }}{% if inv.adjust_sum %}<small>ajustes {{ inv.adjust_sum|cop }}</small>{% endif %}{% else %}—{% endif %}</td>
+      <td class="num strong" data-label="Saldo">{% if inv.review == 'pending' %}<span class="chip warn">Por revisar</span>{% elif inv.balance_due > 0 %}{{ inv.balance_due|cop }}{% else %}<span class="chip ok">Pagada</span>{% endif %}</td>
+    </tr>{% empty %}<tr class="empty-row"><td colspan="7"><div class="empty">{% icon 'file-text' %}<strong>Sin facturas</strong>Cargue o registre una factura de este proveedor en Facturas de proveedores.</div></td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+<div class="grid-2">
+<section class="card">
+  <div class="card-head"><h2>Notas crédito</h2></div>
+  <div class="table-wrap"><table><tbody>{% for n in notes %}<tr><td><span class="cell-title">{{ n.number }}</span><small>{{ n.issue_date|date:"d/m/Y"|default:"" }} {{ n.note }}</small></td><td class="num">{{ n.amount|cop }}<small>disponible {{ n.available|cop }}</small></td></tr>
+  {% empty %}<tr><td><div class="empty">{% icon 'file-text' %}<strong>Sin notas crédito</strong>Regístrelas con «Nota crédito».</div></td></tr>{% endfor %}</tbody></table></div>
+</section>
+<section class="card">
+  <div class="card-head"><h2>Pagos</h2></div>
+  <div class="table-wrap"><table><tbody>{% for p in payments %}<tr><td><a class="cell-title" href="{% url 'supplier_payment' p.pk %}">{{ p.paid_on|date:"d/m/Y"|default:p.scheduled_on|date:"d/m/Y" }}</a><small>{{ p.get_status_display }}{% if p.reference %} · {{ p.reference }}{% endif %}</small></td><td class="num">{{ p.amount|cop }}</td></tr>
+  {% empty %}<tr><td><div class="empty">{% icon 'credit-card' %}<strong>Sin pagos</strong>Use «Pagar facturas» para registrar el primero.</div></td></tr>{% endfor %}</tbody></table></div>
+</section>
+</div>
+{% endblock %}

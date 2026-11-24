@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% block title %}Banco y recaudos{% endblock %}
+{% block heading %}Banco y recaudos{% endblock %}
+{% block content %}
+<div class="page-head">
+  <p>Importe el extracto, revise las sugerencias y confirme a qué cliente y a qué facturas corresponde cada ingreso. Nada se aplica sin su confirmación. El banco es simulado: los extractos son archivos de ejemplo de la demostración.</p>
+  <div class="actions">
+    <a class="btn" href="{% url 'bank_accounts' %}">{% icon 'sliders' %}Cuentas receptoras</a>
+    <a class="btn btn-primary" href="{% url 'bank_import' %}">{% icon 'upload' %}Importar extracto</a>
+  </div>
+</div>
+{% if not accounts %}<div class="callout warn">{% icon 'alert-circle' %}<p>Para importar extractos, registre primero la cuenta bancaria receptora y su forma de pago en <a href="{% url 'bank_accounts' %}">Cuentas receptoras</a>.</p></div>{% endif %}
+<div class="kpis">
+  <div class="kpi"><span class="kpi-icon warn">{% icon 'inbox' 'lg' %}</span><span class="kpi-body"><span class="kpi-label">Por identificar</span><span class="kpi-value">{{ pending_total|pesos }}</span><span class="kpi-sub">{{ counts.pending }} movimiento{{ counts.pending|pluralize }}</span></span></div>
+  <div class="kpi"><span class="kpi-icon">{% icon 'clock' 'lg' %}</span><span class="kpi-body"><span class="kpi-label">Con saldo sin aplicar</span><span class="kpi-value">{{ counts.identified }}</span><span class="kpi-sub">Excedentes o abonos parciales</span></span></div>
+  <div class="kpi"><span class="kpi-icon ok">{% icon 'check-circle' 'lg' %}</span><span class="kpi-body"><span class="kpi-label">Aplicados</span><span class="kpi-value">{{ counts.applied }}</span><span class="kpi-sub">Con recibo de caja</span></span></div>
+</div>
+<section class="card">
+  <div class="toolbar"><div class="tabs">
+    <a href="?estado=pending" class="{% if tab == 'pending' %}is-active{% endif %}">Por identificar{% if counts.pending %}<span class="count">{{ counts.pending }}</span>{% endif %}</a>
+    <a href="?estado=identified" class="{% if tab == 'identified' %}is-active{% endif %}">Saldo sin aplicar{% if counts.identified %}<span class="count">{{ counts.identified }}</span>{% endif %}</a>
+    <a href="?estado=applied" class="{% if tab == 'applied' %}is-active{% endif %}">Aplicados</a>
+    <a href="?estado=other" class="{% if tab == 'other' %}is-active{% endif %}">Ajenos a cartera y salidas</a>
+  </div></div>
+  <div class="table-wrap"><table class="mobile-records">
+    <thead><tr><th scope="col">Fecha</th><th scope="col">Movimiento</th><th scope="col">Titular · cuenta de origen</th><th scope="col" class="num">Valor</th><th scope="col">{% if tab == 'pending' %}Sugerencia{% else %}Cliente{% endif %}</th><th scope="col"><span class="sr-only">Acciones</span></th></tr></thead>
+    <tbody>{% for t in rows %}<tr>
+      <td class="nowrap" data-label="Fecha">{{ t.date|date:"d/m/Y" }}</td>
+      <td class="record-title" data-label="Movimiento"><a class="cell-title" href="{% url 'bank_txn' t.pk %}">{{ t.description|default:"Sin descripción" }}</a><small>{{ t.reference }} · {{ t.account.name }}</small></td>
+      <td data-label="Titular">{{ t.holder_name|default:"—" }}<small>{{ t.origin_account }}</small></td>
+      <td class="num strong" data-label="Valor">{{ t.amount|cop }}{% if tab == 'identified' %}<small>sin aplicar {{ t.left|cop }}</small>{% endif %}</td>
+      <td data-label="Cliente">{% if tab == 'pending' %}
+          {% if t.hint.decision == 'suggested' %}<span class="chip ok">{{ t.hint.candidates.0.label }}</span><small>{{ t.hint.candidates.0.party.name }}</small>
+          {% elif t.hint.decision == 'ambiguous' %}<span class="chip warn">Ambiguo</span><small>{{ t.hint.candidates|length }} posibles clientes</small>
+          {% elif t.hint.counter %}<span class="chip info">Recaudo de contado</span>
+          {% elif t.hint.decision == 'weak' %}<span class="chip">Confianza baja</span><small>{{ t.hint.candidates.0.party.name }}</small>
+          {% else %}<span class="faint">Sin coincidencias</span>{% endif %}
+        {% elif t.party %}{{ t.party.name }}{% else %}<small>{{ t.note }}</small>{% endif %}</td>
+      <td class="num record-actions" data-label="Acciones"><a class="btn btn-sm{% if tab == 'pending' %} btn-primary{% endif %}" href="{% url 'bank_txn' t.pk %}">{% if tab == 'pending' %}Identificar{% else %}Ver{% endif %}</a></td>
+    </tr>{% empty %}<tr class="empty-row"><td colspan="6"><div class="empty">{% icon 'inbox' %}<strong>No hay movimientos en esta vista</strong><small>Cambie de pestaña o importe un extracto para ver movimientos.</small></div></td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% if imports %}<section class="card">
+  <div class="card-head"><h2>Importaciones recientes</h2></div>
+  <div class="table-wrap"><table><tbody>{% for i in imports %}<tr>
+    <td><a class="cell-title" href="{% url 'bank_preview' i.pk %}">{{ i.file_name }}</a><small>{{ i.account.name }}</small></td>
+    <td class="nowrap">{{ i.created_at|date:"d/m/Y H:i" }}<small>{{ i.uploaded_by.display_name }}</small></td>
+    <td>{{ i.get_status_display }}<small>{{ i.new_rows }} nuevos · {{ i.known_rows }} ya importados antes</small></td>
+  </tr>{% endfor %}</tbody></table></div>
+</section>{% endif %}
+{% endblock %}

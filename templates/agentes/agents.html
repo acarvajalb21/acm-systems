@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Agentes{% endblock %}
+{% block heading %}Agentes{% endblock %}
+{% block estilos %}<link rel="stylesheet" href="{% static 'modulos/resumen.css' %}">{% endblock %}
+{% block content %}
+<div class="page-head">
+  <p>Cada agente revisa los datos de la plataforma con reglas del negocio y deja propuestas con su razón. Lo que cambia inventario o finanzas solo se ejecuta cuando lo aprueba un perfil autorizado, y al aprobar se vuelve a comprobar con los datos de ese momento. Trabajan sobre datos sintéticos: los mensajes, pedidos y pagos que preparan son simulados.</p>
+  <div class="actions"><a class="btn" href="{% url 'agents_history' %}">{% icon 'list' %}Historial de decisiones</a><a class="btn" href="{% url 'learning' %}">{% icon 'eye' %}Lo aprendido</a></div>
+</div>
+
+<div class="kpis">
+  <a class="kpi" href="#por-aprobar"><span class="kpi-icon {% if k_pending %}warn{% else %}ok{% endif %}">{% icon 'clipboard' %}</span><span class="kpi-body"><span class="kpi-label">Propuestas por decidir</span><span class="kpi-value">{{ k_pending }}</span><span class="kpi-period">Hoy, {{ today|date:"d/m/Y" }}</span><span class="kpi-sub">Las que su perfil puede aprobar</span></span></a>
+  <a class="kpi" href="#por-aprobar"><span class="kpi-icon">{% icon 'dollar' %}</span><span class="kpi-body"><span class="kpi-label">Descuentos e ingresos en esas propuestas</span><span class="kpi-value">{{ k_benefit|pesos }}</span><span class="kpi-period">Hoy, {{ today|date:"d/m/Y" }}</span><span class="kpi-sub">Pronto pago por aprovechar y recaudo por aplicar</span></span></a>
+  <a class="kpi" href="{% url 'agents_history' %}?estado=executed"><span class="kpi-icon">{% icon 'check-circle' %}</span><span class="kpi-body"><span class="kpi-label">Propuestas ejecutadas</span><span class="kpi-value">{{ k_executed }}</span><span class="kpi-period">Últimos 7 días</span><span class="kpi-sub">{% if k_executed_value %}Suman {{ k_executed_value|pesos }} entre descuentos e ingresos{% else %}Aprobadas por el equipo{% endif %}</span></span></a>
+  <a class="kpi" href="#agentes"><span class="kpi-icon">{% icon 'activity' %}</span><span class="kpi-body"><span class="kpi-label">Agentes activos</span><span class="kpi-value">{{ k_active }} de {{ cards|length }}</span><span class="kpi-period">Ahora</span><span class="kpi-sub">De los que su perfil puede ver</span></span></a>
+</div>
+
+{% if resumen %}<section class="card" id="resumen-ejecutivo" aria-labelledby="agentes-resumen">
+  <div class="card-head"><div><h2 id="agentes-resumen">Resumen ejecutivo</h2><p>Generado el {{ resumen.started_at|date:"d/m/Y" }} a las {{ resumen.started_at|date:"H:i" }}. Las ventas y el recaudo son del día anterior ({{ resumen_day|date:"d/m/Y" }}); los demás saldos, del momento de la revisión.</p></div></div>
+  <div class="card-body"><p class="agentes-resumen-texto">{{ resumen.summary }}</p>
+    {% if resumen_metrics %}<dl class="meta">{% for m in resumen_metrics %}<div><dt>{{ m.label }}</dt><dd>{{ m.value }}</dd></div>{% endfor %}</dl>{% endif %}</div>
+</section>{% endif %}
+
+<section class="card" id="por-aprobar" aria-labelledby="agentes-cola">
+  <div class="card-head"><div><h2 id="agentes-cola">Por decidir</h2><p>Cada propuesta recorre seis pasos. Las de esta lista ya fueron detectadas, analizadas y propuestas: esperan su revisión.</p></div>
+    <ol class="stage-track agentes-pasos" aria-label="Pasos de una propuesta">{% for s in stage_names %}<li class="{% if forloop.counter < 4 %}is-done{% elif forloop.counter == 4 %}is-current{% endif %}">{{ s }}</li>{% endfor %}</ol></div>
+  {% if groups %}
+  <form method="post" action="{% url 'agents_decide' %}" class="agent-queue">{% csrf_token %}
+    {% for g in groups %}<div class="agent-group">
+      <h3 class="agent-group-title"><span class="agent-icon">{% icon g.agent.icon 'sm' %}</span>{{ g.agent.name }}<small>{{ g.items|length }} propuesta{{ g.items|length|pluralize }}{% if g.benefit %} · {{ g.benefit|pesos }}{% endif %}</small></h3>
+      {% for p in g.items %}<article class="agent-item">
+        <label class="agent-check"><input class="check" type="checkbox" name="seleccion" value="{{ p.pk }}" aria-label="Seleccionar: {{ p.title }}"></label>
+        <div class="agent-item-body">
+          <strong><a href="{% url 'agent_action' p.pk %}">{{ p.title }}</a></strong>
+          <p>{{ p.detail }}</p>
+          {% if p.kind == 'collection_reminder' %}<details class="agent-message"><summary>Ver el mensaje preparado (envío simulado)</summary><pre>{{ p.payload.message }}</pre></details>{% endif %}
+          {% if p.kind == 'purchase_order' %}<small class="muted">Las cantidades se recalculan al aprobar, con los datos de ese momento.</small>{% endif %}
+          <div class="agent-meta">{% if p.confidence %}<span class="chip {% if p.confidence == 'Alta' %}ok{% else %}info{% endif %}">Confianza {{ p.confidence|lower }}</span>{% endif %}{% if p.benefit %}<span class="chip plain">{% if p.agent == 'pronto_pago' %}Descuento {% else %}Valor {% endif %}{{ p.benefit|pesos }}</span>{% elif p.amount %}<span class="chip plain">{{ p.amount|pesos }}</span>{% endif %}<small>Calculada el {{ p.refreshed_at|date:"d/m/Y H:i" }}</small><a href="{% url 'agent_action' p.pk %}">Ver evidencias e historial</a></div>
+        </div>
+        <div class="agent-item-actions">
+          <button class="btn btn-sm" type="submit" name="accion" value="aprobar:{{ p.pk }}">{% icon 'check' 'sm' %}Aprobar</button>
+          <button class="btn btn-sm btn-ghost" type="submit" name="accion" value="descartar:{{ p.pk }}">Descartar</button>
+        </div>
+      </article>{% endfor %}
+    </div>{% endfor %}
+    <div class="agent-queue-foot">
+      <label class="sr-only" for="nota-agentes">Nota para el historial</label><input class="input" id="nota-agentes" name="nota" maxlength="300" placeholder="Nota para el historial (opcional)">
+      <button class="btn btn-primary" type="submit" name="accion" value="aprobar_seleccion">{% icon 'check-circle' %}Aprobar las seleccionadas</button>
+    </div>
+  </form>
+  {% else %}<div class="empty is-ok">{% icon 'check-circle' %}<strong>No hay propuestas por decidir</strong>Los agentes vuelven a revisar a su hora y cuando llegan solicitudes o extractos nuevos. También puede pedir una revisión en la ficha de cada agente.<a href="#agentes">Ver los agentes</a></div>{% endif %}
+</section>
+
+<div class="section-heading" id="agentes"><div><h2>Qué hace cada agente</h2><p>Objetivo, disparador, última ejecución, propuesta, estado y siguiente acción. Abra una fila para ver las evidencias que consultó.</p></div></div>
+<section class="card agentes-lista" aria-label="Agentes">
+  <div class="agentes-cabecera" aria-hidden="true"><span>Agente y objetivo</span><span>Disparador y última ejecución</span><span>Propuesta y estado</span><span>Siguiente acción</span><span></span></div>
+  {% for c in cards %}<details class="agentes-ficha{% if not c.cfg.enabled %} is-paused{% endif %}" id="agente-{{ c.agent.key }}">
+    <summary>
+      <span class="agentes-nombre"><span class="agent-icon">{% icon c.agent.icon 'sm' %}</span><span><strong>{{ c.agent.name }}</strong><small>{{ c.agent.area }}</small><span class="agentes-objetivo">{{ c.agent.purpose }}</span></span></span>
+      <span class="agentes-dato"><small>Disparador</small>{{ c.trigger }}<small>Última ejecución</small>{% if c.last %}{{ c.last.started_at|date:"d/m/Y H:i" }} · {{ c.last.get_trigger_display|lower }}{% else %}Aún no se ha ejecutado{% endif %}</span>
+      <span class="agentes-dato"><small>Propuesta</small>{% if c.agent.automatic %}No propone: actúa sola{% elif c.first %}{{ c.pending }} por decidir{% elif c.pending %}{{ c.pending }} para otro perfil{% else %}Ninguna abierta{% endif %}<span class="chip {% if c.state.0 == 'ok' %}ok{% elif c.state.0 == 'bad' %}bad{% else %}plain{% endif %}">{{ c.state.1 }}</span></span>
+      <span class="agentes-siguiente">{{ c.next_action }}</span>
+      <span class="debt-chevron" aria-hidden="true">{% icon 'chevron-down' 'sm' %}</span>
+    </summary>
+    <div class="agentes-detalle">
+      <div>
+        <h3>Evidencias consultadas</h3>
+        <ul class="agentes-fuentes">{% for s in c.sources %}<li>{% if s.url %}<a href="{{ s.url }}">{{ s.label }}</a>{% else %}{{ s.label }}{% endif %}</li>{% endfor %}</ul>
+        {% if c.last %}<p class="agent-last"><strong>Última ejecución:</strong> {% if c.last.status == 'failed' %}<span class="is-bad">no terminó y no cambió ninguna propuesta.</span> Puede repetirla con «Revisar ahora». <small class="muted">Detalle técnico: {{ c.last.error }}</small>{% elif c.last.status == 'running' %}en curso.{% else %}{{ c.last.summary }}{% endif %}</p>{% endif %}
+        {% if c.first %}<p class="agentes-primera"><strong>Propuesta abierta:</strong> <a href="{% url 'agent_action' c.first.pk %}">{{ c.first.title }}</a></p>{% endif %}
+      </div>
+      <div>
+        {% if c.metrics %}<h3>Cifras que guardó en esa ejecución</h3>
+        <dl class="meta">{% for m in c.metrics %}<div><dt>{{ m.label }}</dt><dd>{{ m.value }}</dd></div>{% endfor %}</dl>{% endif %}
+        <div class="actions agentes-acciones">
+          {% if c.can_run %}<form method="post" action="{% url 'agents_run' c.agent.key %}">{% csrf_token %}<button class="btn btn-sm" type="submit">{% icon 'activity' 'sm' %}Revisar ahora</button></form>{% endif %}
+          <a class="btn btn-sm btn-ghost" href="{% url 'agents_history' %}?agente={{ c.agent.key }}">Sus decisiones</a>
+          {% if is_admin %}<details class="confirm agent-settings"><summary class="btn btn-sm btn-ghost">{% icon 'sliders' 'sm' %}Ajustes</summary>
+            <div class="confirm-panel"><form method="post" action="{% url 'agents_configure' c.agent.key %}">{% csrf_token %}
+              <label class="field-check"><input class="check" type="checkbox" name="activo"{% if c.cfg.enabled %} checked{% endif %}> Agente activo</label>
+              {% for x in c.params %}<div class="field"><label for="{{ c.agent.key }}-{{ x.p.key }}">{{ x.p.label }}</label><input class="input" type="number" id="{{ c.agent.key }}-{{ x.p.key }}" name="{{ x.p.key }}" min="{{ x.p.minimum }}" max="{{ x.p.maximum }}" value="{{ x.value }}"></div>{% endfor %}
+              <button class="btn btn-primary btn-block" type="submit">Guardar ajustes</button></form></div></details>{% endif %}
+        </div>
+      </div>
+    </div>
+  </details>{% endfor %}
+</section>
+
+<section class="card" aria-labelledby="agentes-decisiones">
+  <div class="card-head"><div><h2 id="agentes-decisiones">Decisiones recientes</h2><p>Las ocho últimas: lo aprobado, lo descartado y lo que ya no aplicaba.</p></div><a class="text-link" href="{% url 'agents_history' %}">Ver el historial completo</a></div>
+  {% if done %}<div class="table-wrap"><table class="mobile-records">
+    <thead><tr><th scope="col">Propuesta</th><th scope="col">Estado</th><th scope="col">Resultado</th><th scope="col">Decidió</th></tr></thead>
+    <tbody>{% for a in done %}<tr>
+      <td class="record-title" data-label="Propuesta"><a class="cell-title" href="{% url 'agent_action' a.pk %}">{{ a.title }}</a><small>{{ names|get_item:a.agent }}</small></td>
+      <td data-label="Estado">{% include 'agentes/_estado.html' %}</td>
+      <td data-label="Resultado">{{ a.result.message|default:a.note|default:"—" }}</td>
+      <td class="nowrap" data-label="Decidió">{% if a.decided_by %}{{ a.decided_by.display_name }}{% else %}El agente, al recalcular{% endif %}<small>{{ a.decided_at|date:"d/m/Y H:i" }}</small></td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}<div class="empty">{% icon 'list' %}<strong>Aún no hay decisiones</strong>Cuando apruebe o descarte una propuesta quedará aquí con su resultado.</div>{% endif %}
+</section>
+
+<section class="card" aria-labelledby="agentes-bitacora">
+  <div class="card-head"><div><h2 id="agentes-bitacora">Bitácora de ejecuciones</h2><p>Las doce últimas, con lo que las inició y lo que dejaron. Se omiten los avisos internos sin novedad.</p></div></div>
+  <div class="table-wrap"><table class="mobile-records">
+    <thead><tr><th scope="col">Fecha</th><th scope="col">Agente</th><th scope="col">Origen</th><th scope="col">Resultado</th><th scope="col" class="num">Propuestas</th></tr></thead>
+    <tbody>{% for r in runs %}<tr>
+      <td class="nowrap" data-label="Fecha">{{ r.started_at|date:"d/m/Y H:i" }}</td>
+      <td class="record-title" data-label="Agente">{{ names|get_item:r.agent }}</td>
+      <td data-label="Origen">{{ r.get_trigger_display }}{% if r.actor %}<small>{{ r.actor.display_name }}</small>{% endif %}</td>
+      <td data-label="Resultado">{% if r.status == 'failed' %}<span class="chip bad">Con error</span><small>{{ r.error }}</small>{% elif r.status == 'running' %}<span class="chip info">En curso</span>{% else %}{{ r.summary }}{% endif %}</td>
+      <td class="num" data-label="Propuestas">{{ r.proposed }}{% if r.executed %}<small>{{ r.executed }} ejecutada{{ r.executed|pluralize }}</small>{% endif %}</td>
+    </tr>{% empty %}<tr class="empty-row"><td colspan="5"><div class="empty">{% icon 'activity' %}<strong>Aún no hay ejecuciones</strong>Use «Revisar ahora» en un agente o espere a la próxima hora programada.</div></td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endblock %}

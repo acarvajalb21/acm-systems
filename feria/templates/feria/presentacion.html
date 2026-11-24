@@ -1,0 +1,131 @@
+{% load static %}<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0f1719">
+<meta name="description" content="ACM Systems conecta solicitudes, inventario, compras, recepción, ventas y cobros en un mismo sistema, con pronósticos y agentes supervisados. Recorre la operación en 3D y entra a la demostración.">
+<title>Presentación · {{ app_name }}</title>
+<link rel="icon" type="image/png" href="{% static 'icono/favicon.png' %}">
+<link rel="icon" type="image/svg+xml" href="{% static 'icono/icono.svg' %}">
+<link rel="apple-touch-icon" href="{% static 'icono/apple-180.png' %}">
+<link rel="manifest" href="{% url 'manifest' %}">
+<link rel="preload" href="{% static 'fuentes/ibm-plex-sans-condensed-latin-600-normal.woff2' %}" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="{% static 'app.css' %}">
+<link rel="stylesheet" href="{% static 'modulos/flujo.css' %}">
+<link rel="stylesheet" href="{% static 'modulos/presentacion.css' %}">
+<script src="{% static 'modulos/presentacion.js' %}" defer></script>
+</head>
+<body class="pres">
+<a class="skip-link" href="#contenido">Saltar al contenido</a>
+<header class="acm-header">
+  <div class="acm-wrap acm-nav">
+    <a class="acm-brand" href="#inicio" aria-label="ACM Systems: inicio"><img src="{% static 'icono/icono.svg' %}" width="36" height="36" alt=""><span>ACM<span class="acm-brand-light">systems</span></span></a>
+    <nav class="acm-links" aria-label="Secciones de la presentación" id="acm-navigation"><a href="#funciona">El recorrido</a><a href="#incluye">La plataforma</a><a href="#simulador">Pruébala</a><a href="#equipo">El proyecto</a></nav>
+    <a class="acm-button acm-button-small" href="{% url 'login' %}" aria-label="{% if user.is_authenticated %}Volver a la demostración{% else %}Entrar a la demostración{% endif %}">{% if user.is_authenticated %}Volver a la demo{% else %}Abrir demo{% endif %}</a>
+    <button class="acm-menu" type="button" aria-controls="acm-navigation" aria-expanded="false" aria-label="Abrir menú">{% icon 'menu' %}</button>
+  </div>
+</header>
+<main id="contenido" tabindex="-1">
+  <div class="acm-stage" id="escenario" data-scene="{% static 'modulos/escena3d.js' %}">
+    <div class="acm-stage-view" aria-hidden="true"><canvas class="acm-stage-canvas"></canvas></div>
+    <section class="acm-hero" id="inicio" aria-labelledby="pres-titulo">
+      <div class="acm-wrap acm-hero-grid">
+        <div class="acm-hero-copy">
+          <p class="acm-descriptor">Automation &amp; Business Organization</p>
+          <h1 id="pres-titulo">Seis áreas.<br>Una sola<br>operación.</h1>
+          <p class="acm-lead">ACM Systems une solicitudes, inventario, compras, recepción, ventas y cobros en un mismo sistema.<span class="acm-lead-more"> Los pronósticos anticipan lo que hará falta, los agentes proponen y una persona decide.</span></p>
+          <div class="acm-actions"><a class="acm-button" href="{% url 'login' %}">Entrar a la demostración</a><a class="acm-ghost" href="#funciona">Ver el recorrido</a></div>
+          <p class="acm-note">Demostración con datos sintéticos · Sin registro</p>
+          <p class="sr-only">La maqueta de la portada muestra seis estaciones sobre un circuito, unidas a un núcleo central: solicitud, inventario, compra, recepción, venta y cobro. Una unidad las recorre y cambia de estado en cada una. El mismo contenido está en la sección «El recorrido».</p>
+        </div>
+        <img class="acm-poster" src="{% static 'presentacion/maqueta.webp' %}" alt="" width="1400" height="1050" decoding="async">
+      </div>
+      <a class="acm-hero-cue" href="#funciona">{% icon 'chevron-down' %}<span>Sigue una unidad por las seis áreas</span></a>
+    </section>
+    <section class="acm-journey" id="funciona" aria-labelledby="flow-title">
+      <div class="acm-journey-pin"><div class="acm-wrap acm-journey-grid">
+        <div class="acm-journey-head"><h2 id="flow-title">Una operación que sí sigue el hilo.</h2><p>Cada registro conecta con el siguiente. Elige una estación y mira qué le ocurre a la unidad.</p></div>
+        <div class="acm-flow-stage">{% for st in steps %}<article class="acm-flow-panel flujo-paso-{{ st.order }}" id="flow-{{ st.key }}"{% if not forloop.first %} hidden{% endif %}>
+          <div class="acm-flow-art">{% include 'feria/flujo_escena.html' with pulso=False %}</div>
+          <div class="acm-flow-copy"><span class="acm-step-count">Paso {{ st.order }} de 6</span><h3>{{ st.label }}</h3><p>{{ st.text }}</p><div class="acm-flow-context"><span>La unidad</span><strong>{% if st.key == 'solicitud' %}Todavía es una necesidad: un contorno sin existencias.{% elif st.key == 'inventario' %}Se compara con los lotes disponibles y deja ver el faltante.{% elif st.key == 'compra' %}Pasa a ser un pedido cuando una persona lo aprueba.{% elif st.key == 'recepcion' %}Entra como caja real, con su lote y su vencimiento.{% elif st.key == 'venta' %}Sale con su factura y el inventario se descuenta.{% else %}Se convierte en un ingreso que encuentra su factura.{% endif %}</strong></div><a class="acm-text-link" href="{% url 'login' %}">Explorar en la demo</a></div>
+        </article>{% endfor %}</div>
+        <div class="acm-journey-controls">
+          <div class="acm-flow-picker" role="group" aria-label="Estaciones del recorrido">{% for st in steps %}<button type="button" data-step="{{ st.key }}" aria-controls="flow-{{ st.key }}" aria-pressed="{% if forloop.first %}true{% else %}false{% endif %}"><span>{{ st.order|stringformat:"02d" }}</span>{{ st.label }}</button>{% endfor %}<span class="acm-flow-progress" aria-hidden="true"><i id="flow-progress"></i></span></div>
+          <button type="button" class="acm-play" id="flow-play" hidden>{% icon 'play' 'acm-ico-play' %}{% icon 'pause' 'acm-ico-pause' %}<span id="flow-play-text">Reproducir recorrido</span></button>
+        </div>
+      </div></div>
+      <noscript><p class="acm-wrap acm-noscript">Activa JavaScript para cambiar de estación y ver la maqueta en 3D. El flujo conecta solicitud, inventario, compra, recepción, venta y cobro. Puedes entrar a la demostración con el enlace de arriba.</p></noscript>
+    </section>
+  </div>
+  <section class="acm-section acm-platform" id="incluye" aria-labelledby="platform-title"><div class="acm-wrap">
+    <div class="acm-section-head"><h2 id="platform-title">El mismo sistema,<br>tres maneras de verlo.</h2><p>Operación, inteligencia y control comparten los mismos registros. Elige una vista y manipula el ejemplo: cada persona ve lo que necesita para actuar.</p></div>
+    <div class="acm-product">
+      <div class="acm-views" role="group" aria-label="Vistas del producto">
+        <button type="button" data-preview="inventario" aria-pressed="true" aria-controls="preview-inventario">{% icon 'layers' %}<span><strong>Inventario por lote</strong><small>Lotes, vencimientos, pedidos y recepción con escáner. Un recorrido con trazabilidad.</small></span></button>
+        <button type="button" data-preview="pronostico" aria-pressed="false" aria-controls="preview-pronostico">{% icon 'activity' %}<span><strong>Pronóstico</strong><small>Consumo esperado con error medido, sugerencias de reposición y un copiloto que cita los registros consultados.</small></span></button>
+        <button type="button" data-preview="agentes" aria-pressed="false" aria-controls="preview-agentes">{% icon 'shield' %}<span><strong>Agentes supervisados</strong><small>Nueve agentes revisan los datos y proponen acciones. Inventario y finanzas pasan por una persona autorizada.</small></span></button>
+      </div>
+      <div class="acm-workbench" aria-label="Vista interactiva de ACM Systems">
+        <div class="acm-windowbar"><span class="acm-window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span>Tu centro de operaciones</span><span class="acm-sample">Ejemplo interactivo · datos sintéticos</span></div>
+        <section class="acm-preview-panel" id="preview-inventario" aria-labelledby="inventory-preview-title">
+          <div class="acm-panel-heading"><div><p>Sellante industrial · tres lotes</p><h3 id="inventory-preview-title">Cada unidad tiene una historia.</h3></div><span class="acm-chip">FEFO</span></div>
+          <div class="acm-stock-summary"><div><span>Unidades disponibles</span><strong><span id="lot-total">248</span><small>ud.</small></strong></div><p id="lot-note" role="status">El lote que vence primero, sale primero.</p></div>
+          <ul class="acm-lots" id="lots" aria-label="Lotes del ejemplo">
+            <li data-lot="48"><span class="acm-lot-icon acm-lot-amber">{% icon 'package' %}</span><div><strong>Lote SL-041</strong><span>Vence en 12 días · sale primero</span></div><b><span>48</span> <small>ud.</small></b><span class="acm-lot-bar"><i></i></span></li>
+            <li data-lot="120"><span class="acm-lot-icon acm-lot-mint">{% icon 'package' %}</span><div><strong>Lote SL-044</strong><span>Vence en 3 meses</span></div><b><span>120</span> <small>ud.</small></b><span class="acm-lot-bar"><i></i></span></li>
+            <li data-lot="80"><span class="acm-lot-icon acm-lot-mint">{% icon 'package' %}</span><div><strong>Lote SL-047</strong><span>Vence en 7 meses</span></div><b><span>80</span> <small>ud.</small></b><span class="acm-lot-bar"><i></i></span></li>
+          </ul>
+          <div class="acm-panel-actions"><button class="acm-button acm-button-dark" type="button" id="lot-dispatch">Despachar 60 unidades</button><button class="acm-reset" type="button" id="lot-reset" hidden>Reiniciar ejemplo</button><span>Ejemplo local: no mueve inventario en la demo.</span></div>
+        </section>
+        <section class="acm-preview-panel" id="preview-pronostico" aria-labelledby="forecast-preview-title" hidden>
+          <div class="acm-panel-heading"><div><p>Anticipación de demanda</p><h3 id="forecast-preview-title">Mira lo que viene.</h3></div><span class="acm-chip acm-chip-amber">Ejemplo</span></div>
+          <div class="acm-forecast-metric"><strong>42 <span>ud. por semana</span></strong><p>Consumo esperado de sellante industrial</p></div>
+          <svg class="acm-mini-chart" viewBox="0 0 520 168" role="img" aria-label="Gráfico ilustrativo: consumo histórico seguido de una previsión"><path class="acm-grid-line" d="M0 35H520M0 85H520M0 135H520"/><path class="acm-chart-area" d="M0 135 52 105 104 119 156 68 208 82 260 52 310 68 362 43 414 55 466 22 520 33V165H0Z"/><path class="acm-chart-line" pathLength="1" d="M0 135 52 105 104 119 156 68 208 82 260 52 310 68"/><path class="acm-chart-projection" d="M310 68 362 43 414 55 466 22 520 33"/><path class="acm-chart-divider" d="M310 8V165"/></svg>
+          <div class="acm-chart-legend"><span>Consumo histórico · ud. por semana</span><span>Previsión ilustrativa · próximas 4 semanas</span></div>
+          <div class="acm-panel-actions"><a class="acm-text-link" href="#simulador">Cambia la demanda y explora la reposición</a></div>
+        </section>
+        <section class="acm-preview-panel" id="preview-agentes" aria-labelledby="agent-preview-title" hidden>
+          <div class="acm-panel-heading"><div><p>Agente de abastecimiento</p><h3 id="agent-preview-title">El sistema propone. Tú decides.</h3></div><span class="acm-chip acm-chip-amber" id="agent-status">Pendiente de revisión</span></div>
+          <ol class="acm-seq" id="agent-seq" data-state="review">
+            <li><span class="acm-seq-node">{% icon 'eye' %}</span><div><strong>Situación detectada</strong><p>El sellante industrial puede agotarse antes de la siguiente entrega.</p></div></li>
+            <li><span class="acm-seq-node">{% icon 'list' %}</span><div><strong>Motivo</strong><p class="acm-agent-evidence"><span>Stock actual <b>48 ud.</b></span><span>Necesidad prevista <b>84 ud.</b></span><span>Faltante <b>36 ud.</b></span></p></div></li>
+            <li><span class="acm-seq-node">{% icon 'user' %}</span><div><strong>Revisión humana</strong><p id="agent-review">Propuesta: reponer 36 unidades. Falta tu decisión.</p><div class="acm-agent-actions"><button class="acm-button acm-button-dark" type="button" id="agent-approve">Aprobar propuesta</button><button class="acm-quiet" type="button" id="agent-reject">Rechazar</button></div></div></li>
+            <li><span class="acm-seq-node">{% icon 'check-circle' %}</span><div><strong>Resultado simulado</strong><p id="agent-message" role="status">Aparece cuando decides. Esta prueba no crea pedidos en la demo.</p></div></li>
+          </ol>
+          <div class="acm-panel-actions"><button class="acm-reset" type="button" id="agent-reset" hidden>Reiniciar ejemplo</button></div>
+        </section>
+        <div class="acm-workbench-footer"><span>ACM Systems</span><span>Información → propuesta → decisión</span></div>
+      </div>
+    </div>
+  </div></section>
+  <section class="acm-section acm-simulator-section" id="simulador" aria-labelledby="simulator-title"><div class="acm-wrap acm-simulator-layout">
+    <div class="acm-simulator-copy"><h2 id="simulator-title">¿Y si la demanda sube mañana?</h2><p>Mueve el consumo semanal y el tiempo de entrega. Las cajas muestran lo que tienes y lo que habría que reponer; la línea de semanas, si el stock alcanza hasta que llegue el pedido.</p><details class="acm-formula"><summary>Cómo se calcula este ejemplo</summary><p>Stock fijo: 120 unidades. Necesidad = consumo semanal × (plazo de entrega + 1 semana de reserva). Reposición = máximo entre cero y necesidad menos stock. Cobertura = stock ÷ consumo semanal.</p><p>Es una regla didáctica. Los pronósticos de la aplicación usan historial, evaluación de error y sus propios supuestos.</p></details></div>
+    <div class="acm-simulator"><div class="acm-sim-heading"><h3>Laboratorio de abastecimiento</h3><span class="acm-chip acm-chip-dark">Ejemplo</span></div><p class="acm-sim-product">Sellante industrial <span>120 unidades en stock</span></p>
+      <div class="acm-sliders"><label for="demand">Consumo semanal <output for="demand" id="demand-output">40 ud.</output></label><input type="range" id="demand" min="10" max="100" step="5" value="40"><div class="acm-range-ends"><span>10 unidades</span><span>100 unidades</span></div><label for="lead-time">Tiempo de entrega <output for="lead-time" id="lead-output">3 semanas</output></label><input type="range" id="lead-time" min="1" max="6" step="1" value="3"><div class="acm-range-ends"><span>1 semana</span><span>6 semanas</span></div></div>
+      <div class="acm-sim-visual">
+        <div class="acm-crates-block"><div class="acm-crates" id="crates" role="img" aria-label="Cajas en stock y por reponer">{% for c in crates %}<i></i>{% endfor %}</div><ul class="acm-legend"><li class="is-stock">En stock</li><li class="is-order">Por reponer</li><li class="is-spare">Stock de sobra</li><li class="is-note">1 caja = 20 ud.</li></ul></div>
+        <div class="acm-weeks-block"><p>Semanas de cobertura</p><div class="acm-weeks" id="weeks" role="img" aria-label="Cobertura del stock frente a la llegada del pedido"><span class="acm-weeks-reserve"></span><span class="acm-weeks-stock"></span><span class="acm-weeks-gap"></span><span class="acm-weeks-arrival"><b>Llega el pedido</b></span></div><div class="acm-weeks-scale" aria-hidden="true"><span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span></div></div>
+      </div>
+      <div class="acm-sim-result" role="status" aria-live="polite" aria-atomic="true"><div><span>Reposición sugerida</span><strong><span id="order-units">40</span> <small>unidades</small></strong><em>Necesidad: <span id="need-units">160</span> ud.</em></div><p id="stock-status">Tu stock cubre 3 semanas. Repón antes de consumir la reserva.</p></div>
+      <div class="acm-sim-footer"><span>Simulación local · No genera pedidos</span><button type="button" class="acm-reset" id="sim-reset">Restablecer</button></div><noscript><p>Activa JavaScript para recalcular. El ejemplo inicial requiere 160 unidades y sugiere reponer 40.</p></noscript>
+    </div>
+  </div></section>
+  <section class="acm-section acm-trust" id="comprobar" aria-labelledby="trust-title"><div class="acm-wrap"><div class="acm-section-head"><h2 id="trust-title">La confianza también se construye con registros.</h2><p>La aplicación permite revisar el origen de las sugerencias, los permisos y el historial de cada decisión.</p></div><div class="acm-ledger"><article>{% icon 'shield' %}<h3>Acceso por perfil</h3><p>Siete perfiles con permisos comprobados en el servidor. Cada área tiene su espacio.</p></article><article>{% icon 'activity' %}<h3>Metodología a la vista</h3><p>Modelos con ventanas de evaluación y error medido. Los supuestos están documentados.</p></article><article>{% icon 'check-circle' %}<h3>Una huella de cada acción</h3><p>Quién aprobó, qué cambió y cuándo. Los registros evitan duplicar operaciones.</p></article></div></div></section>
+  <section class="acm-section acm-faq" id="preguntas" aria-labelledby="faq-title"><div class="acm-wrap acm-faq-layout"><div><h2 id="faq-title">Antes de entrar.</h2><p>Una plataforma funcional con un escenario empresarial de ejemplo.</p></div><div class="acm-faq-items">
+    <details><summary>¿Qué puedo probar?</summary><p>Puedes recorrer solicitudes, inventario, compras, recepción, ventas, cartera, banco, pronósticos, agentes y copiloto. Cada perfil permite explorar las funciones de su área.</p></details>
+    <details><summary>¿Los datos pertenecen a una empresa real?</summary><p>No. {{ company_name }} es ficticia. Empresa, personas, productos y cifras se generan para la demostración; ningún dato corresponde a personas u organizaciones reales.</p></details>
+    <details><summary>¿Los agentes actúan por su cuenta?</summary><p>Los agentes revisan los registros y generan propuestas. Las acciones que cambian inventario o finanzas necesitan aprobación de un perfil autorizado y dejan historial.</p></details>
+    <details><summary>¿Necesito internet para usarla?</summary><p>La aplicación se ejecuta desde este equipo y usa recursos locales, incluida la maqueta 3D. Una vez instalada y preparado el escenario, la demostración funciona sin internet.</p></details>
+    <details><summary>Lo que es simulación</summary><p>El banco, el sistema contable, el correo y la mensajería son simulados. Los documentos no tienen validez fiscal; los mensajes y pedidos no salen del equipo. Los ejemplos de esta página se calculan en el navegador y no tocan los registros de la demo. Los resultados no demuestran eficacia en una empresa real.</p></details>
+    <details><summary>¿Cómo empiezo el recorrido?</summary><p>Abre la demo y elige un perfil en el equipo que ejecuta el servidor. En el perfil de dirección encontrarás un recorrido guiado de siete pasos. También puedes ingresar con los accesos locales de la demostración.</p></details>
+  </div></div></section>
+  <section class="acm-section acm-about" id="equipo" aria-labelledby="pres-equipo-titulo"><div class="acm-wrap acm-about-layout"><div><h2 id="pres-equipo-titulo">Quiénes somos</h2><p>{{ about.text }}</p></div><div><p class="acm-statement">Desarrollamos una aplicación a partir del trabajo con una empresa para integrar información operativa, anticipar necesidades de abastecimiento y asistir la ejecución de procesos mediante modelos predictivos y agentes supervisados. Esta demostración utiliza un caso empresarial y datos sintéticos.</p>
+    {% if about.team %}<ul class="pres-equipo">{% for m in about.team %}<li>{% if m.image %}<img class="pres-foto" src="{% static m.image %}" alt="" width="72" height="72" loading="lazy">{% endif %}<div><h3>{{ m.name }}</h3>{% if m.role %}<p>{{ m.role }}</p>{% endif %}{% if m.about %}<p>{{ m.about }}</p>{% endif %}{% if m.link %}<a href="{{ m.link.url }}" rel="noopener noreferrer">{{ m.link.text }}</a>{% endif %}</div></li>{% endfor %}</ul>{% endif %}
+    {% if about.facts %}<dl class="pres-ficha">{% for f in about.facts %}<div><dt>{{ f.label }}</dt><dd>{{ f.value }}</dd></div>{% endfor %}</dl>{% endif %}
+  </div></div></section>
+  <section class="acm-close" aria-labelledby="close-title"><div class="acm-wrap"><h2 id="close-title">El siguiente paso es verlo funcionar.</h2><div class="acm-close-actions"><a class="acm-button acm-button-dark" href="{% url 'login' %}">Entrar a la demostración</a><p>Explora el sistema con un perfil de demostración. Sin registro.</p></div></div></section>
+</main>
+<footer class="acm-footer"><div class="acm-wrap"><div class="acm-footer-top"><span>Automation &amp; Business Organization</span><a href="#inicio">Volver al inicio</a></div><p class="acm-footer-brand" aria-hidden="true">ACM systems</p><div class="acm-footer-bottom"><p>Demostración con datos sintéticos</p><p>Tipografía IBM Plex Sans · SIL Open Font<br>Íconos Feather · MIT · Three.js · MIT · Recursos locales</p></div></div></footer>
+</body></html>

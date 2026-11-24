@@ -1,0 +1,71 @@
+{% extends 'base.html' %}{% load static %}
+{% block estilos %}<link rel="stylesheet" href="{% static 'modulos/copiloto.css' %}">{% endblock %}
+{% block title %}Copiloto{% endblock %}
+{% block heading %}Copiloto{% endblock %}
+{% block content %}
+<div class="page-head"><p>Pregunte por la operación. El copiloto consulta los datos con los permisos de su perfil, dice de dónde sale cada cifra y enlaza los registros; aprobar, pedir o aplicar se hace en cada pantalla.</p></div>
+
+<div class="copilot-mode" data-mode="{{ mode.mode }}">
+  <span class="chip plain{% if mode.mode == 'generativo' %} solid{% endif %}">{{ mode.label }}</span>
+  <span>{{ mode.detail }}</span>
+  {% if mode.fallback %}<span class="copilot-mode-hint">{{ mode.fallback }}</span>{% endif %}
+</div>
+
+{% if context %}
+<div class="callout copilot-context">{% icon 'bookmark' %}<p>La pregunta se refiere a este registro: <strong>{{ context.label }}</strong>. <a href="{% url 'copilot' %}">Preguntar sin este registro</a></p></div>
+{% endif %}
+
+<section class="chat" data-copilot data-url="{% url 'copilot_ask' %}" aria-label="Conversación con el copiloto">
+  <div class="chat-log" aria-live="polite" data-copilot-log>
+    {% if error %}
+    <div class="bubble is-bot is-error" role="alert"><span class="bubble-meta">Copiloto</span><p>{{ error }}</p><p>Su pregunta sigue en el cuadro de abajo.</p></div>
+    {% endif %}
+    {% if turn %}
+    {% include 'copiloto/_turno.html' with t=turn %}
+    {% elif not error %}
+    <div class="empty copilot-empty" data-copilot-empty>{% icon 'activity' %}<strong>Elija una pregunta o escriba la suya</strong>
+      <p>Cada respuesta indica el periodo, las fuentes, sus limitaciones y los registros que la sustentan. Si los datos no alcanzan, lo dice.</p></div>
+    {% endif %}
+  </div>
+
+  {% if suggestions %}
+  <form class="chat-suggestions" method="post" action="{% url 'copilot_ask' %}" data-copilot-form data-fetch aria-label="Preguntas sugeridas">{% csrf_token %}
+    <input type="hidden" name="contexto" value="{{ context.raw }}">
+    {% for s in suggestions %}{% if not s.budget %}<button class="suggestion" type="submit" name="q" value="{{ s.question }}">{{ s.question }}</button>{% endif %}{% endfor %}
+  </form>
+  {% for s in suggestions %}{% if s.budget %}
+  <form class="copilot-budget" method="post" action="{% url 'copilot_ask' %}" data-copilot-form data-fetch>{% csrf_token %}
+    <input type="hidden" name="q" value="{{ s.question }}">
+    <label for="copilot-presupuesto">{{ s.question }}</label>
+    <input class="input" id="copilot-presupuesto" name="presupuesto" type="text" inputmode="numeric" maxlength="20" autocomplete="off" value="{{ s.example }}" placeholder="{{ s.example|default:'8.000.000' }}" aria-describedby="copilot-presupuesto-ayuda">
+    <button class="btn btn-sm" type="submit">Preparar propuesta</button>
+    <small class="help" id="copilot-presupuesto-ayuda">En pesos, por periodo de revisión.{% if s.example %} La cifra propuesta suma lo ya comprometido en pedidos abiertos y parte de lo que falta por pedir: cámbiela para ver otro recorte.{% endif %} Vacío: usa el presupuesto configurado o ninguno.</small>
+  </form>
+  {% endif %}{% endfor %}
+  {% endif %}
+
+  <form class="chat-form" method="post" action="{% url 'copilot_ask' %}" data-copilot-form data-copilot-main data-fetch>{% csrf_token %}
+    <input type="hidden" name="contexto" value="{{ context.raw }}">
+    <label class="sr-only" for="copilot-q">Su pregunta</label>
+    <textarea class="input" id="copilot-q" name="q" rows="1" maxlength="{{ max_question }}" required placeholder="Por ejemplo: ¿qué referencias podrían agotarse en 15 días?">{{ draft }}</textarea>
+    <button class="btn btn-primary" type="submit">Preguntar</button>
+  </form>
+</section>
+<p class="copilot-foot">Hasta {{ per_minute }} preguntas por minuto y {{ max_question }} caracteres por pregunta. El copiloto solo consulta: no modifica datos.</p>
+
+{% if history %}
+<div class="section-heading"><div><h2>Sus preguntas recientes</h2><p>Queda la pregunta, lo consultado y el resumen de ese momento. «Repetir» consulta de nuevo con los datos actuales.</p></div></div>
+<section class="card"><ul class="prio-list">
+  {% for h in history %}
+  <li class="prio-item"><span class="prio-mark" aria-hidden="true"></span>
+    <div class="prio-body"><strong>{{ h.question }}</strong><p>{{ h.answer|truncatechars:240 }}</p>
+      <div class="prio-meta"><span>{{ h.created_at|date:'d/m/Y H:i' }}</span><span>{{ h.get_mode_display }}</span>{% if h.error %}<span>El modo generativo falló; respondió el asistente local</span>{% endif %}</div></div>
+    <span></span>
+    <form class="prio-action" method="post" action="{% url 'copilot_ask' %}" data-copilot-form data-fetch>{% csrf_token %}
+      <input type="hidden" name="q" value="{{ h.question }}"><input type="hidden" name="contexto" value="{{ h.context }}">
+      <button class="btn btn-sm" type="submit">Repetir</button></form></li>
+  {% endfor %}
+</ul></section>
+{% endif %}
+{% endblock %}
+{% block scripts %}<script src="{% static 'modulos/copiloto.js' %}" defer></script>{% endblock %}

@@ -1,0 +1,8 @@
+{% extends 'auth_base.html' %}
+{% block title %}Recuperar acceso{% endblock %}
+{% block card %}
+<h2>¿Olvidó su contraseña?</h2>
+<p>En esta demostración las contraseñas las restablece el perfil de Administración; no se envían correos.</p>
+<div class="callout">{% icon 'info' %}<div><p><strong>Pida el restablecimiento</strong> a quien administra la demostración. Recibirá una clave temporal y, al ingresar, la plataforma le pedirá crear una nueva.</p></div></div>
+<a class="btn btn-primary btn-block" href="{% url 'login' %}">{% icon 'arrow-left' %}Volver a iniciar sesión</a>
+{% endblock %}

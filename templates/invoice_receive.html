@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block title %}Recibir mercancía{% endblock %}
+{% block crumbs %}<p class="crumbs"><a href="{% url 'invoice' invoice.pk %}">{% icon 'arrow-left' 'sm' %} Factura {{ invoice.number }}</a></p>{% endblock %}
+{% block heading %}Recibir mercancía · {{ invoice.supplier.name }}{% endblock %}
+{% block content %}
+<form method="post" novalidate>{% csrf_token %}
+  {% for f in form.hidden_fields %}{{ f }}{% endfor %}
+  {% include '_form_errors.html' %}
+  {% if rows.non_form_errors %}<div class="form-errors" role="alert">{% icon 'alert-circle' %}<ul>{% for e in rows.non_form_errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+  <section class="card">
+    <div class="card-head"><div><h2>Pendiente de esta factura</h2><p>Cuente las unidades y registre cada lote tal como llegó. Si una referencia viene en dos lotes, agregue otra fila.</p></div></div>
+    <div class="table-wrap"><table class="mobile-records">
+      <thead><tr><th scope="col">Referencia</th><th scope="col" class="num">Facturado</th><th scope="col" class="num">Ya recibido</th><th scope="col" class="num">Pendiente</th><th scope="col">Lote / vencimiento facturado</th></tr></thead>
+      <tbody>{% for l in pending %}<tr>
+        <td class="record-title" data-label="Referencia"><span class="cell-title">{{ l.product.name }}</span><small>{{ l.description }}</small></td>
+        <td class="num" data-label="Facturado">{{ l.quantity|num }}</td><td class="num" data-label="Ya recibido">{{ l.received|num }}</td><td class="num strong" data-label="Pendiente">{{ l.pending|num }}</td>
+        <td data-label="Lote y vencimiento facturados">{{ l.expected_lot|default:"—" }}{% if l.expected_expiry %}<small>{{ l.expected_expiry|date:"d/m/Y" }}</small>{% endif %}</td>
+      </tr>{% endfor %}</tbody>
+    </table></div>
+  </section>
+  <section class="card" data-formset="lotes">
+    <div class="card-head"><div><h2>Lotes recibidos</h2><p>La mercancía vencida o en exceso no se recibe: regístrela como novedad con el proveedor.</p></div><button class="btn" type="button" data-add-row>{% icon 'plus' %}Agregar lote</button></div>
+    {{ rows.management_form }}
+    <div class="table-wrap card-body"><table class="lines mobile-records receipt-records">
+      <thead><tr><th scope="col">Producto</th><th scope="col">Cantidad</th><th scope="col">Lote</th><th scope="col">Vencimiento</th><th scope="col">Ubicación</th><th scope="col"><span class="sr-only">Quitar lote</span></th></tr></thead>
+      <tbody>{% for rf in rows %}{% include '_receipt_row.html' %}{% endfor %}</tbody>
+    </table></div>
+    <template>{% with rf=rows.empty_form %}{% include '_receipt_row.html' %}{% endwith %}</template>
+    <datalist id="ubicaciones">{% for l in locations %}<option value="{{ l }}">{% endfor %}</datalist>
+    <div class="card-body">
+      <div class="form-grid">
+        {% include '_field.html' with f=form.received_on %}
+        {% include '_field.html' with f=form.note %}
+      </div>
+    </div>
+    <div class="card-foot"><div class="form-actions">
+      <a class="btn btn-ghost" href="{% url 'invoice' invoice.pk %}">Cancelar</a>
+      <button class="btn btn-primary" type="submit">{% icon 'check' %}Confirmar recepción</button>
+    </div></div>
+  </section>
+</form>
+{% endblock %}

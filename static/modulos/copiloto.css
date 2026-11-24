@@ -1,0 +1,58 @@
+/* Copiloto. Complementa .chat, .bubble, .sources y .suggestion del sistema; solo usa sus variables. */
+
+.copilot-mode { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; max-width: 1120px; margin: 0 auto 12px; color: var(--tinta-2); font-size: 13.5px; }
+.copilot-mode-hint { color: var(--ambar-texto); }
+.copilot-context { max-width: 1120px; margin-inline: auto; }
+.copilot-foot { max-width: 1120px; margin: 8px auto 0; color: var(--tinta-2); font-size: 12.5px; }
+.copilot-empty { padding-block: 44px; }
+
+/* El panel del copiloto es más ancho que un chat corriente: sus respuestas traen tablas de hasta nueve columnas. */
+.chat[data-copilot] { max-width: 1120px; }
+.copilot-result td, .copilot-result th { padding-inline: 10px; }
+
+/* La respuesta ocupa el ancho del panel: lleva tablas, fichas y enlaces. */
+.bubble.copilot-answer { align-self: stretch; max-width: 100%; }
+.copilot-answer > p { max-width: 72ch; }
+.copilot-model { font-variant-numeric: tabular-nums; }
+.copilot-note { display: flex; align-items: flex-start; gap: 6px; margin: 6px 0 0; color: var(--ambar-texto); font-size: 13px; }
+.copilot-note .icon { flex: none; margin-top: 2px; color: var(--ambar); }
+.copilot-options { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; }
+.copilot-options .sources-title { flex-basis: 100%; margin: 0; }
+
+.copilot-result { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--linea); }
+.copilot-result h3 { margin: 0 0 6px; font-family: var(--fuente-titulos); font-size: 17px; font-weight: 600; }
+.copilot-result h4 { margin: 14px 0 6px; color: var(--tinta-2); font-size: 13px; font-weight: 600; }
+.copilot-computed { color: var(--tinta-2); font-size: 13.5px; }
+.copilot-result .table-wrap, .copilot-list, .copilot-facts { border: 1px solid var(--linea); border-radius: var(--radio-control); background: var(--superficie); }
+.copilot-facts { padding: 12px 14px; }
+.copilot-list .prio-item { grid-template-columns: 10px minmax(0, 1fr) auto; padding: 10px 14px; }
+.copilot-list .prio-body p { margin: 2px 0 0; color: var(--tinta-2); font-size: 13.5px; }
+.copilot-result .empty { padding: 18px 14px; border: 1px solid var(--linea); border-radius: var(--radio-control); background: var(--superficie); }
+.copilot-more { margin: 6px 0 0; color: var(--tinta-2); font-size: 12.5px; }
+.copilot-links { margin-top: 12px; }
+.copilot-period { margin: 0 0 4px; }
+.copilot-limits-title { margin-top: 8px; }
+
+/* Presupuesto: la tercera pregunta obligatoria con su cifra. */
+.copilot-budget { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 0 18px 12px; font-size: 13px; }
+.copilot-budget label { color: var(--tinta); }
+.copilot-budget .input { width: 140px; min-height: 34px; font-variant-numeric: tabular-nums; }
+.copilot-budget .help { flex-basis: 100%; margin: 0; color: var(--tinta-2); font-size: 12.5px; }
+
+/* Espera y bloqueo mientras se consulta. */
+.copilot-pending { align-self: stretch; max-width: 100%; }
+.copilot-pending .skeleton { max-width: 520px; }
+.chat.is-busy .suggestion, .chat.is-busy .chat-form .btn, .chat.is-busy .copilot-budget .btn { opacity: .55; pointer-events: none; }
+.copilot-answer.is-new, .bubble.is-user.is-new { animation: copiloto-entra var(--t) var(--curva); }
+@keyframes copiloto-entra { from { opacity: 0; transform: translateY(6px); } }
+
+@media (max-width: 760px) {
+  .copilot-budget { padding-inline: 14px; }
+  .copilot-budget .input { flex: 1; width: auto; min-height: 44px; }
+  .copilot-list .prio-item { grid-template-columns: 10px minmax(0, 1fr); }
+  .copilot-list .prio-item .chip { grid-column: 2; justify-self: start; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .copilot-answer.is-new, .bubble.is-user.is-new { animation: none; }
+}

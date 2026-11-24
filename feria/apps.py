@@ -1,0 +1,7 @@
+from django.apps import AppConfig
+
+
+class FeriaConfig(AppConfig):
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'feria'
+    verbose_name = 'Demostración: escenario, perfiles, recorrido, mapa de flujo y metodología'

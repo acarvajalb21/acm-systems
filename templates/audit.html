@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block title %}Auditoría{% endblock %}
+{% block heading %}Auditoría{% endblock %}
+{% block content %}
+<div class="page-head"><p>Registro de operaciones por cuenta. Los eventos no se editan ni se eliminan desde el sistema.</p></div>
+<section class="card">
+  <div class="table-wrap"><table class="mobile-records">
+    <thead><tr><th scope="col">Fecha</th><th scope="col">Cuenta</th><th scope="col">Evento</th><th scope="col">Detalle</th></tr></thead>
+    <tbody>{% for e in page %}<tr>
+      <td class="nowrap" data-label="Fecha y hora">{{ e.created_at|date:"d/m/Y H:i:s" }}</td>
+      <td data-label="Cuenta">{{ e.actor.display_name|default:"Sistema" }}<small>{{ e.actor.get_role_display }}</small></td>
+      <td class="cell-title record-title" data-label="Evento">{{ e.event }}</td>
+      <td data-label="Detalle">{{ e.detail|default:"—" }}{% if e.target %}<small>Ref. {{ e.target|truncatechars:14 }}</small>{% endif %}</td>
+    </tr>{% empty %}<tr class="empty-row"><td colspan="4"><div class="empty">{% icon 'shield' %}<strong>Sin eventos</strong>Las operaciones que registre cada cuenta aparecerán aquí.</div></td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% include '_pager.html' %}
+</section>
+{% endblock %}

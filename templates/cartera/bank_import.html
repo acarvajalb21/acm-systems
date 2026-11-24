@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block crumbs %}<p class="crumbs"><a href="{% url 'bank' %}">{% icon 'arrow-left' 'sm' %} Banco y recaudos</a></p>{% endblock %}
+{% block content %}
+<section class="card form-card">
+  <div class="card-body">
+    {% if not accounts %}<div class="callout warn">{% icon 'alert-circle' %}<p>Para importar un extracto, registre primero una <a href="{% url 'bank_accounts' %}">cuenta receptora</a>.</p></div>{% endif %}
+    <p class="muted">Cargue el archivo del extracto. En esta demostración el banco es simulado y el archivo es un ejemplo con datos sintéticos. Antes de guardar verá cuántos movimientos son nuevos y cuántos ya estaban importados.</p>
+    {% include '_form_errors.html' %}
+    <form method="post" enctype="multipart/form-data" novalidate>{% csrf_token %}
+      {% for f in form.hidden_fields %}{{ f }}{% endfor %}
+      <div class="form-grid">{% for f in form.visible_fields %}{% include '_field.html' with f=f %}{% endfor %}</div>
+      <div class="callout">{% icon 'info' %}<div><p><strong>Columnas reconocidas:</strong> fecha; valor, o crédito y débito; descripción o concepto; referencia; cuenta de origen; titular u ordenante; identificación; saldo.</p>
+        <p class="help">Si dos extractos se solapan, los movimientos repetidos no se duplican.</p></div></div>
+      <div class="form-actions"><a class="btn btn-ghost" href="{% url 'bank' %}">Cancelar</a><button class="btn btn-primary" type="submit">{% icon 'upload' %}Revisar archivo</button></div>
+    </form>
+  </div>
+</section>
+{% endblock %}

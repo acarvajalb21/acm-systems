@@ -1,0 +1,11 @@
+{# Control compacto para cambiar de perfil desde el menú de la persona. Solo aparece con `demo_profiles` en el contexto. #}
+{% if demo_profiles %}
+<form class="profile-switch" method="post" action="{% url 'demo_profile' %}" aria-label="Cambiar de perfil de demostración">{% csrf_token %}
+  <input type="hidden" name="next" value="{{ request.path }}">
+  <label class="sr-only" for="cambiar-perfil">Perfil de demostración</label>
+  <select class="input" id="cambiar-perfil" name="perfil">
+    {% for p in demo_profiles %}<option value="{{ p.key }}"{% if p.current %} selected{% endif %}>{{ p.label }}{% if p.area != p.label %} · {{ p.area }}{% endif %}</option>{% endfor %}
+  </select>
+  <button class="btn btn-sm" type="submit">Cambiar de perfil</button>
+</form>
+{% endif %}

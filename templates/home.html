@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Resumen{% endblock %}
+{% block heading %}Resumen{% endblock %}
+{% block estilos %}<link rel="stylesheet" href="{% static 'modulos/flujo.css' %}">
+<link rel="stylesheet" href="{% static 'modulos/resumen.css' %}">{% endblock %}
+{% block content %}
+<div class="page-head">
+  <p><strong class="resumen-fecha">{{ long_date }}.</strong> {% if attention_total %}{{ attention_total }} asunto{{ attention_total|pluralize }} necesita{{ attention_total|pluralize:"n" }} atención{% else %}Nada necesita atención ahora{% endif %} en lo que el perfil {{ user.get_role_display }} puede ver y decidir.</p>
+  <div class="actions">{% include 'copiloto/_acceso.html' %}<a class="btn" href="{% url 'tour' %}">{% icon 'play' %}Recorrido guiado</a></div>
+</div>
+
+{% if failed %}<div class="callout bad" role="alert">{% icon 'alert-triangle' %}<p><strong>Una parte del Resumen no se pudo calcular:</strong> {{ failed|join:", " }}. El resto de la página y todos los módulos siguen disponibles; vuelva a cargar o continúe desde <a href="{% url 'operations' %}">Operaciones</a>.</p></div>{% endif %}
+
+{% if flow_wide %}{% include 'feria/flujo_compacto.html' %}{% endif %}
+
+<div class="grid-2 resumen-cuerpo">
+  <section class="card" aria-labelledby="resumen-atencion">
+    <div class="card-head"><div><h2 id="resumen-atencion">Qué necesita atención</h2><p>Alertas de su perfil y propuestas de los agentes que usted puede decidir, de lo más urgente a lo menos.</p></div></div>
+    {% if attention %}<ul class="prio-list">
+      {% for a in attention %}<li class="prio-item {{ a.mark }}"><span class="prio-mark" aria-hidden="true"></span>
+        <div class="prio-body"><strong><a href="{{ a.url }}">{{ a.title }}</a></strong><p>{{ a.detail }}</p>
+          <div class="prio-meta"><span class="chip {{ a.chip }}">{{ a.chip_text }}</span><span>{{ a.source }}</span></div></div>
+        <a class="btn btn-sm prio-action" href="{{ a.url }}" aria-label="{{ a.action }}: {{ a.title }}">{{ a.action }}</a></li>{% endfor %}
+    </ul>
+    <div class="card-foot resumen-pie"><span class="muted">{% if attention_more %}Se muestran los 6 más urgentes de {{ attention_total }}.{% else %}Es todo lo pendiente para su perfil.{% endif %}</span>
+      <span class="actions"><a class="text-link" href="{% url 'alerts' %}">Ver las {{ alerts_total }} alertas</a>{% if agents_visible %}<a class="text-link" href="{% url 'agents' %}#por-aprobar">Propuestas de agentes ({{ proposals_total }})</a>{% endif %}</span></div>
+    {% else %}<div class="empty is-ok">{% icon 'check-circle' %}<strong>Nada necesita su atención ahora</strong>No hay alertas ni propuestas por decidir para su perfil.{% if can_request %}<a href="{% url 'new_request' %}">Crear una solicitud</a>{% else %}<a href="{% url 'operations' %}">Registrar una operación</a>{% endif %}</div>{% endif %}
+  </section>
+
+  <div class="stack resumen-lado">
+    {% if recommendation %}<section class="card resumen-recomendacion{% if recommendation.calm %} is-calm{% endif %}" aria-labelledby="resumen-recomienda">
+      <div class="card-body">
+        <h2 id="resumen-recomienda">Qué se recomienda</h2>
+        <p class="resumen-accion">{{ recommendation.title }}</p>
+        <p class="resumen-sustento">{{ recommendation.reason }}</p>
+        <div class="actions between"><a class="btn {% if recommendation.calm %}{% else %}btn-primary{% endif %}" href="{{ recommendation.url }}">{{ recommendation.label }} {% icon 'arrow-right' 'sm' %}</a><span class="tag">{{ recommendation.source }}</span></div>
+      </div>
+    </section>{% endif %}
+
+    <section class="card" aria-labelledby="resumen-riesgos">
+      <div class="card-head"><div><h2 id="resumen-riesgos">Qué puede ocurrir</h2><p>Riesgos calculados con los datos de hoy. Son estimaciones sobre datos sintéticos.</p></div></div>
+      {% if risks %}<ul class="prio-list resumen-riesgos">
+        {% for r in risks %}<li class="prio-item {{ r.mark }}"><span class="prio-mark" aria-hidden="true"></span>
+          <div class="prio-body"><strong><a href="{{ r.url }}">{{ r.title }}</a></strong><p>{{ r.detail }}</p></div>
+          <span class="prio-when">{{ r.when }}</span></li>{% endfor %}
+      </ul>
+      {% elif plans_failed %}<div class="empty is-error">{% icon 'alert-triangle' %}<strong>No se pudo calcular la reposición</strong>Sin ese cálculo no hay riesgos de faltante que mostrar.<a href="{% url 'replenishment' %}">Abrir Reposición</a></div>
+      {% else %}<div class="empty is-ok">{% icon 'check-circle' %}<strong>Sin riesgos próximos a la vista</strong>Con los datos de hoy no se prevén faltantes, vencimientos sin uso ni plazos por perder en lo que su perfil atiende.</div>{% endif %}
+    </section>
+  </div>
+</div>
+
+{% if indicators %}<div class="section-heading"><div><h2>Indicadores</h2><p>Cada cifra dice su periodo y abre el detalle que la sustenta.</p></div></div>
+<div class="kpis resumen-kpis">
+  {% for k in indicators %}<a class="kpi" href="{{ k.url }}"><span class="kpi-icon {{ k.tone }}">{% icon k.icon %}</span><span class="kpi-body">
+    <span class="kpi-label">{{ k.label }}</span><span class="kpi-value">{{ k.value }}</span>
+    <span class="kpi-period">{{ k.period }}</span>
+    {% if k.delta %}<span class="kpi-sub">{{ k.delta.text }}</span>{% elif k.sub %}<span class="kpi-sub">{{ k.sub }}</span>{% endif %}</span></a>{% endfor %}
+</div>{% endif %}
+
+{% if is_requester %}
+<div class="grid-2">
+  <section class="card" id="disponibilidad" aria-labelledby="resumen-disponible">
+    <div class="card-head"><div><h2 id="resumen-disponible">Referencias disponibles</h2><p>Unidades vigentes y sin reserva, hoy. Consulte antes de preparar la solicitud.</p></div><div class="search">{% icon 'search' %}<input class="input" type="search" placeholder="Buscar referencia" data-filter="#tabla-disponible" aria-label="Buscar referencia disponible"></div></div>
+    <div class="table-wrap"><table id="tabla-disponible" class="mobile-records" aria-label="Disponibilidad de referencias">
+      <thead><tr><th scope="col">Referencia</th><th scope="col">Presentación</th><th class="num" scope="col">Disponible</th><th scope="col"><span class="sr-only">Acciones</span></th></tr></thead>
+      <tbody>{% for p in products %}<tr>
+        <td class="record-title" data-label="Referencia"><span class="cell-title">{{ p.name }}</span><small>{{ p.generic|default:p.code }}</small></td>
+        <td data-label="Presentación">{{ p.presentation|default:p.unit }}</td>
+        <td class="num" data-label="Disponible">{% if p.available %}<strong>{{ p.available|qty:p }}</strong>{% else %}<span class="chip bad">Agotada</span>{% endif %}</td>
+        <td class="num record-actions" data-label="Acciones"><a class="btn btn-sm" href="{% url 'new_request' %}?product={{ p.pk }}" aria-label="Solicitar {{ p.name }}">Solicitar</a></td>
+      </tr>{% empty %}<tr class="empty-row"><td colspan="4"><div class="empty">{% icon 'package' %}<strong>Aún no hay referencias activas</strong>Inventario las publica desde el catálogo.</div></td></tr>{% endfor %}</tbody>
+    </table></div>
+  </section>
+  <section class="card" aria-labelledby="resumen-solicitudes">
+    <div class="card-head"><div><h2 id="resumen-solicitudes">Mis solicitudes recientes</h2><p>Las seis últimas y su estado.</p></div><a class="text-link" href="{% url 'requests' %}">Ver todas</a></div>
+    <div class="table-wrap"><table class="mobile-records" aria-label="Mis solicitudes recientes">
+      <thead><tr><th scope="col">Referencia</th><th scope="col">Destino</th><th scope="col">Estado</th></tr></thead>
+      <tbody>{% for r in requests %}<tr>
+        <td class="record-title" data-label="Referencia"><span class="cell-title">{{ r.product.name }}</span><small>{{ r.quantity|qty:r.product }} · {{ r.created_at|date:"d/m/Y" }}</small></td>
+        <td data-label="Destino">{{ r.purpose }}{% if r.needed_by %}<small>Para el {{ r.needed_by|date:"d/m/Y" }}</small>{% endif %}</td>
+        <td data-label="Estado">{% include '_request_status.html' %}</td>
+      </tr>{% empty %}<tr class="empty-row"><td colspan="3"><div class="empty">{% icon 'clipboard' %}<strong>Aún no tiene solicitudes</strong>Cuando pida una referencia podrá seguir su estado aquí.<a href="{% url 'new_request' %}">Solicitar una referencia</a></div></td></tr>{% endfor %}</tbody>
+    </table></div>
+  </section>
+</div>
+{% elif is_reception %}
+<div class="section-heading"><div><h2>Facturas por recibir</h2><p>Validadas por compras, de la más antigua a la más reciente.</p></div><a class="text-link" href="{% url 'reception' %}">Ir a Recibir mercancía</a></div>
+<section class="card">
+  <div class="receive-list">
+    {% for inv in pending %}<a class="receive-item" href="{% url 'reception_invoice' inv.pk %}">
+      <span class="agent-icon lg">{% icon 'truck' %}</span>
+      <span class="receive-main"><strong>{{ inv.supplier.name }}</strong><small>Factura {{ inv.number }} · {{ inv.issue_date|date:"d/m/Y" }}</small></span>
+      <span class="receive-units"><strong>{{ inv.pending_units|num }}</strong><small>unidades por recibir</small></span>
+      {% icon 'arrow-right' 'sm' %}
+    </a>{% empty %}<div class="empty is-ok">{% icon 'check-circle' %}<strong>No hay mercancía pendiente</strong>Cuando compras valide una factura, aparecerá aquí.</div>{% endfor %}
+  </div>
+</section>
+{% elif recent_sales is not None %}
+<section class="card">
+  <div class="card-head"><div><h2>Ventas recientes</h2><p>El número del documento lo asigna el sistema contable simulado; no tiene validez fiscal.</p></div><a class="text-link" href="{% url 'sales' %}">Ver todas las ventas</a></div>
+  <div class="table-wrap"><table class="mobile-records">
+    <thead><tr><th scope="col">Venta</th><th scope="col">Cliente</th><th scope="col">Fecha</th><th scope="col" class="num">Total</th><th scope="col">Estado</th></tr></thead>
+    <tbody>{% for s in recent_sales %}<tr>
+      <td class="record-title" data-label="Venta"><a class="cell-title" href="{% url 'sale' s.pk %}">{{ s.label }}</a><small>{{ s.get_condition_display }}</small></td>
+      <td data-label="Cliente">{{ s.party.name }}</td>
+      <td class="nowrap" data-label="Fecha">{{ s.issue_date|date:"d/m/Y" }}</td>
+      <td class="num strong" data-label="Total">{{ s.total|cop }}</td>
+      <td data-label="Estado">{% include 'cartera/_sale_status.html' %}</td>
+    </tr>{% empty %}<tr class="empty-row"><td colspan="5"><div class="empty">{% icon 'file-text' %}<strong>Aún no hay ventas</strong>Prepare la primera para verla aquí.<a href="{% url 'sale_new' %}">Preparar una venta</a></div></td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endif %}
+
+{% if not flow_wide and stations %}<div class="section-heading"><div><h2>Su lugar en el flujo</h2><p>La operación completa va de la solicitud al cobro; su perfil atiende las estaciones con cifras.</p></div></div>
+{% include 'feria/flujo_compacto.html' %}{% endif %}
+{% endblock %}

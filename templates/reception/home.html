@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% block title %}Recibir mercancía{% endblock %}
+{% block heading %}Recibir mercancía{% endblock %}
+{% block content %}
+<section class="card scan-start">
+  <div class="card-body">
+    <div class="scan-start-copy">
+      <span class="tag">{% icon 'truck' 'sm' %} Llegó un pedido</span>
+      <h2>Escanee el QR de la factura</h2>
+      <p>O escriba su número. Luego escanee cada caja: la referencia, el lote y el vencimiento se llenan solos.</p>
+    </div>
+    <form method="post" action="{% url 'reception_find' %}" class="scan-start-form" data-scan-form>{% csrf_token %}
+      <label class="sr-only" for="codigo-factura">QR o número de la factura</label>
+      <input class="input scan-input" id="codigo-factura" name="codigo" autocomplete="off" autocapitalize="characters" placeholder="QR o número de la factura" required data-scan-input>
+      <button class="btn btn-primary" type="submit">{% icon 'search' %}Buscar</button>
+      <button class="btn camera-btn" type="button" data-camera-toggle data-target="#codigo-factura" hidden>{% icon 'eye' %}Usar la cámara</button>
+    </form>
+    <div class="camera-box" data-camera-box hidden><video data-camera-video muted playsinline></video><span class="camera-frame" aria-hidden="true"></span><p class="camera-hint" data-camera-hint>Apunte al código</p></div>
+  </div>
+</section>
+
+<div class="kpis">
+  <div class="kpi"><span class="kpi-icon {% if k_pending %}warn{% else %}ok{% endif %}">{% icon 'truck' 'lg' %}</span><span class="kpi-body"><span class="kpi-label">Facturas por recibir</span><span class="kpi-value">{{ k_pending }}</span><span class="kpi-sub">Validadas por compras</span></span></div>
+  <div class="kpi"><span class="kpi-icon">{% icon 'package' 'lg' %}</span><span class="kpi-body"><span class="kpi-label">Unidades por recibir</span><span class="kpi-value">{{ k_units|num }}</span><span class="kpi-sub">En esas facturas</span></span></div>
+  <div class="kpi"><span class="kpi-icon ok">{% icon 'check-circle' 'lg' %}</span><span class="kpi-body"><span class="kpi-label">Recibidas hoy</span><span class="kpi-value">{{ k_today }}</span><span class="kpi-sub">Recepciones confirmadas</span></span></div>
+</div>
+
+<section class="card">
+  <div class="card-head"><div><h2>Por recibir</h2><p>Toque una factura para empezar o continuar su recepción.</p></div></div>
+  <div class="receive-list">
+    {% for inv in pending %}<a class="receive-item" href="{% url 'reception_invoice' inv.pk %}">
+      <span class="agent-icon lg">{% icon 'truck' %}</span>
+      <span class="receive-main"><strong>{{ inv.supplier.name }}</strong><small>Factura {{ inv.number }} · {{ inv.issue_date|date:"d/m/Y" }}</small></span>
+      <span class="receive-units"><strong>{{ inv.pending_units|num }}</strong><small>unidades</small></span>
+      {% if inv.session_id %}<span class="chip warn">En curso</span>{% else %}<span class="chip plain">Por empezar</span>{% endif %}
+      {% icon 'arrow-right' 'sm' %}
+    </a>{% empty %}<div class="empty">{% icon 'check-circle' %}<strong>No hay mercancía pendiente</strong>Cuando compras valide una factura, aparecerá aquí.</div>{% endfor %}
+  </div>
+</section>
+
+{% if waiting %}<section class="card">
+  <div class="card-head"><div><h2>Facturas que compras aún no valida</h2><p>Si la mercancía de alguna ya llegó, apártela en la zona de recepción y avise a inventario o contabilidad para que validen la factura.</p></div></div>
+  <div class="table-wrap"><table class="mobile-records"><tbody>{% for inv in waiting %}<tr>
+    <td class="record-title" data-label="Proveedor"><span class="cell-title">{{ inv.supplier.name }}</span><small>Factura {{ inv.number }}</small></td>
+    <td class="nowrap" data-label="Fecha">{{ inv.issue_date|date:"d/m/Y" }}</td>
+    <td data-label="Estado"><span class="chip plain">Por validar</span></td>
+  </tr>{% endfor %}</tbody></table></div>
+</section>{% endif %}
+
+<section class="card">
+  <div class="card-head"><div><h2>Recepciones recientes</h2></div></div>
+  <div class="table-wrap"><table class="mobile-records">
+    <thead><tr><th scope="col">Factura</th><th scope="col">Recibió</th><th scope="col">Fecha</th><th scope="col">Ubicación</th></tr></thead>
+    <tbody>{% for s in done %}<tr>
+      <td class="record-title" data-label="Factura"><span class="cell-title">{{ s.invoice.supplier.name }}</span><small>Factura {{ s.invoice.number }}</small></td>
+      <td data-label="Recibió">{{ s.closed_by.display_name }}</td>
+      <td class="nowrap" data-label="Fecha">{{ s.closed_at|date:"d/m/Y H:i" }}</td>
+      <td data-label="Ubicación">{{ s.location }}</td>
+    </tr>{% empty %}<tr class="empty-row"><td colspan="4"><div class="empty">{% icon 'inbox' %}<strong>Aún no hay recepciones con escáner</strong>Las recepciones que confirme aparecerán aquí.</div></td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endblock %}
+{% block scripts %}{% load static %}<script src="{% static 'scanner.js' %}" data-zxing="{% static 'vendor/zxing-0.21.3/zxing.min.js' %}" defer></script>{% endblock %}

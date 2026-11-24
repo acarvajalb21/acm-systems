@@ -1,0 +1,207 @@
+/* Mapa de flujo · solicitud → inventario → compra → recepción → venta → cobro
+   Amplía las piezas base .flow-map / .flow-stations / .flow-station / .flow-panel de app.css (sección 18).
+   El dibujo de cada estación es SVG generado en feria/flow.py: aquí solo se le da color y movimiento.
+
+   1. Línea de estaciones   2. Dibujo   3. Pulso del conducto   4. Panel de la estación
+   5. Franja compacta del Resumen   6. Celular   7. Movimiento reducido e impresión */
+
+/* ------------------------------------------------------ 1. Línea de estaciones */
+.flujo { overflow: hidden; }
+.flujo-linea { grid-auto-columns: minmax(0, 1fr); padding: 0; border-bottom: 1px solid var(--linea); background: var(--superficie-2); }
+.flujo-paso { display: flex; min-width: 0; }
+.flujo-estacion { align-content: start; gap: 0; height: 100%; padding: 0 0 16px; border: 0; border-radius: 0; box-shadow: inset 0 3px 0 transparent; transition: background-color var(--t) ease, box-shadow var(--t) ease; }
+.flujo-estacion[aria-selected="true"] { margin-bottom: -1px; padding-bottom: 17px; border: 0; background: var(--superficie); box-shadow: inset 0 3px 0 var(--acento), inset 1px 0 0 var(--linea), inset -1px 0 0 var(--linea); }
+.flujo-paso-1 .flujo-estacion[aria-selected="true"] { box-shadow: inset 0 3px 0 var(--acento), inset -1px 0 0 var(--linea); }
+.flujo-paso-6 .flujo-estacion[aria-selected="true"] { box-shadow: inset 0 3px 0 var(--acento), inset 1px 0 0 var(--linea); }
+.flujo-estacion:focus-visible { outline: var(--foco); outline-offset: -3px; }
+.flujo-texto { display: grid; justify-items: start; gap: 1px; min-width: 0; padding: 6px 18px 0; }
+.flujo-nombre { display: flex; align-items: center; gap: 8px; color: var(--tinta); font-size: 15px; font-weight: 600; }
+.flujo-orden { display: grid; place-items: center; flex: none; width: 20px; height: 20px; border: 1px solid var(--linea-fuerte); border-radius: 50%; background: var(--superficie); color: var(--tinta-2); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; transition: background-color var(--t) ease, border-color var(--t) ease, color var(--t) ease; }
+.flujo-estacion[aria-selected="true"] .flujo-orden { border-color: var(--acento); background: var(--acento); color: var(--superficie); }
+/* La cifra va en tinta: el estado lo dicen la luz de la plataforma y el rótulo, no el color del número. */
+.flujo-estacion strong { margin-top: 6px; overflow-wrap: anywhere; font-size: 32px; font-weight: 600; line-height: 1.05; }
+.flujo-estacion strong, .flujo-estacion.is-warning strong, .flujo-estacion.is-critical strong { color: var(--tinta); }
+.flujo-estacion strong.is-largo { font-size: 26px; line-height: 1.3; white-space: nowrap; }
+.flujo-estacion small { min-height: 2.9em; font-size: 13px; line-height: 1.45; }
+.flujo-estacion .chip { margin-top: 6px; }
+.flujo-candado { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; color: var(--tinta-2); font-size: 13px; }
+.flujo-leyenda { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 0; padding: 0; color: var(--tinta-2); font-size: 13px; list-style: none; }
+.flujo-leyenda li { display: inline-flex; align-items: center; gap: 7px; }
+.flujo-luz { display: inline-block; width: 18px; height: 5px; border-radius: 3px; background: var(--acento); }
+.flujo-luz.is-warning { background: var(--ambar); }
+.flujo-luz.is-critical { background: var(--rojo); }
+.flujo-nota { max-width: 90ch; color: var(--tinta-2); font-size: 13px; }
+
+/* ------------------------------------------------------------------ 2. Dibujo */
+.flujo-escena { display: block; width: 100%; height: auto; overflow: hidden; }
+.fl-top, .fl-front, .fl-side { stroke: var(--linea-control); stroke-width: 1; stroke-linejoin: round; }
+.fl-top { fill: var(--superficie); }
+.fl-front { fill: var(--neutro-tinte); }
+.fl-side { fill: var(--linea); }
+.fl-top.is-duct { fill: var(--linea-suave); }
+.fl-front.is-duct { fill: var(--linea); }
+.fl-side.is-duct { fill: var(--linea-fuerte); }
+.fl-top.is-base, .fl-front.is-base, .fl-side.is-base { transition: fill var(--t) ease, stroke var(--t) ease; }
+.fl-front.is-base { fill: var(--linea-suave); }
+.fl-top.is-obj, .fl-front.is-obj, .fl-side.is-obj, .fl-top.is-coin, .fl-front.is-coin { stroke: var(--tinta-3); }
+.fl-top.is-obj { fill: var(--superficie-2); }
+.fl-front.is-obj { fill: var(--superficie); }
+.fl-side.is-obj { fill: var(--linea); }
+.fl-top.is-accent { fill: var(--edad-2); stroke: var(--acento-fuerte); }
+.fl-front.is-accent { fill: var(--acento); stroke: var(--acento-fuerte); }
+.fl-side.is-accent { fill: var(--acento-fuerte); stroke: var(--acento-fuerte); }
+.fl-top.is-post, .fl-front.is-post, .fl-side.is-post { fill: var(--linea-control); stroke: var(--tinta-3); stroke-width: .6; }
+.fl-top.is-coin { fill: var(--superficie); }
+.fl-front.is-coin { fill: var(--neutro-tinte); stroke-width: 1; stroke-linejoin: round; }
+.fl-coin-face { fill: var(--superficie); stroke: var(--tinta-3); stroke-width: 1.2; }
+.fl-sign { fill: var(--acento-fuerte); font: 600 19px var(--fuente-titulos); }
+.fl-ink { stroke: var(--tinta-2); stroke-width: 1.7; stroke-linecap: round; }
+.fl-ink.is-light { stroke: var(--linea-fuerte); stroke-width: 1.2; }
+.fl-accent { fill: var(--acento); }
+.fl-accent-line { fill: var(--acento-tinte); stroke: var(--acento); stroke-width: 1.4; }
+.fl-accent-stroke { stroke: var(--acento); stroke-width: 2.4; stroke-linecap: round; }
+.fl-window { fill: var(--acento-tinte); stroke: var(--acento-fuerte); stroke-width: 1; }
+.fl-wheel { fill: var(--tinta-2); }
+.fl-hub { fill: var(--superficie); }
+.fl-hole { fill: var(--tinta-2); }
+.fl-shutter { fill: var(--neutro-tinte); stroke: var(--tinta-3); stroke-width: 1; }
+.fl-arrow { fill: none; stroke: var(--tinta-2); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+/* La luz del frente de la plataforma dice el estado (el texto de la estación lo repite). */
+.fl-lamp { fill: var(--acento); transition: fill var(--t) ease; }
+.is-warning .fl-lamp { fill: var(--ambar); }
+.is-critical .fl-lamp { fill: var(--rojo); }
+.is-locked .fl-lamp { fill: var(--linea-fuerte); }
+/* Estación ajena al perfil: se atenúan la plataforma y su objeto; el conducto sigue completo. */
+.is-locked .flujo-escena > :not(.is-duct):not(.fl-arrow):not(g):not(clipPath) { opacity: .45; }
+.flujo-estacion[aria-selected="true"] .fl-top.is-base { fill: var(--acento-tinte); stroke: var(--acento); }
+.flujo-estacion[aria-selected="true"] .fl-front.is-base, .flujo-estacion[aria-selected="true"] .fl-side.is-base { stroke: var(--acento); }
+@media (hover: hover) and (pointer: fine) {
+  .flujo-estacion:hover { border: 0; background: var(--superficie); }
+  .flujo-estacion:hover .flujo-nombre { color: var(--acento-fuerte); }
+}
+
+/* -------------------------------------------------------- 3. Pulso del conducto */
+/* Una marca recorre el conducto de izquierda a derecha y entra a cada estación: indica el sentido del flujo.
+   Cada tramo anima su propia marca con un retardo; juntas se leen como una sola que avanza. */
+.flujo-pulso { fill: var(--acento); opacity: 0; }
+@media (prefers-reduced-motion: no-preference) {
+  .flujo-pulso { animation: flujo-avance 10.8s linear infinite; }
+  .flujo-paso-2 .flujo-pulso { animation-delay: 1.2s; }
+  .flujo-paso-3 .flujo-pulso { animation-delay: 2.4s; }
+  .flujo-paso-4 .flujo-pulso { animation-delay: 3.6s; }
+  .flujo-paso-5 .flujo-pulso { animation-delay: 4.8s; }
+  .flujo-paso-6 .flujo-pulso { animation-delay: 6s; }
+}
+@keyframes flujo-avance {
+  0% { opacity: 1; transform: translateX(-14px); }
+  11.1% { opacity: 1; transform: translateX(200px); }
+  11.2%, 100% { opacity: 0; transform: translateX(200px); }
+}
+
+/* ------------------------------------------------------ 4. Panel de la estación */
+.flujo-panel { padding: 22px 24px 20px; border-top: 0; }
+.flujo-panel:focus-visible { outline: var(--foco); outline-offset: -3px; }
+.flujo-panel-cuerpo { display: grid; grid-template-columns: minmax(240px, 340px) minmax(0, 1fr); gap: 12px 36px; align-items: start; }
+.flujo-ficha h2 { font-size: 22px; }
+.flujo-ficha > p { max-width: 46ch; margin: 6px 0 0; color: var(--tinta-2); font-size: 14px; }
+.flujo-ficha .flujo-estado { display: flex; align-items: flex-start; gap: 10px; margin-top: 14px; color: var(--tinta); }
+.flujo-estado .chip { flex: none; margin-top: 1px; }
+.flujo-ficha .actions { margin-top: 16px; }
+.flujo-enlaces { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.flujo-ficha .flujo-enlaces { margin-top: 12px; }
+.flujo-enlaces .text-link { white-space: normal; }
+.flujo-ficha .flujo-regla { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--linea-suave); font-size: 13px; }
+.flujo-regla strong { color: var(--tinta); font-weight: 600; }
+.flujo-lista { min-width: 0; }
+.flujo-lista h3 { margin: 0 0 4px; color: var(--tinta-2); font-family: var(--fuente); font-size: 13px; font-weight: 500; }
+.flujo-registros { border: 1px solid var(--linea); border-radius: var(--radio-control); }
+.flujo-registros .prio-item { padding: 11px 14px; }
+.flujo-lista .empty { padding: 28px 16px; border: 1px solid var(--linea); border-radius: var(--radio-control); }
+.flujo-mas { margin: 8px 2px 0; color: var(--tinta-2); font-size: 13px; }
+.flujo-panel > .empty { max-width: 70ch; margin-inline: auto; }
+.flujo-panel > .empty p + p { margin-top: 6px; }
+@media (prefers-reduced-motion: no-preference) {
+  /* El panel entra al elegir una estación con el puntero; con el teclado cambia sin animación. */
+  .flujo.is-animated .flujo-panel:not([hidden]) > * { animation: flujo-entra var(--t) var(--curva) backwards; }
+}
+@keyframes flujo-entra { from { opacity: 0; transform: translateY(5px); } }
+
+/* ------------------------------------------- 5. Franja compacta del Resumen */
+.flujo-compacto { margin-bottom: 18px; overflow: hidden; border: 1px solid var(--linea); border-radius: var(--radio-panel); background: var(--superficie-2); }
+/* Las estaciones se apoyan en un riel continuo; cada dibujo tapa el tramo que pasa por detrás. */
+.flujo-compacto-linea { position: relative; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); margin: 0; padding: 0; list-style: none; }
+.flujo-compacto-linea::before { content: ""; position: absolute; inset: 66px 0 auto; height: 5px; border-block: 1px solid var(--linea-control); background: var(--linea-suave); }
+.flujo-compacto-linea li { position: relative; display: flex; min-width: 0; }
+.flujo-mini { display: grid; align-content: start; width: 100%; min-width: 0; padding: 0 0 12px; color: var(--tinta); text-decoration: none; transition: background-color var(--t-rapido) ease; }
+.flujo-mini:focus-visible { outline: var(--foco); outline-offset: -3px; }
+.flujo-mini .flujo-escena { width: 168px; height: 84px; margin-inline: 12px auto; }
+.flujo-mini .is-duct, .flujo-mini .fl-arrow { display: none; }
+.flujo-mini-texto { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; padding: 4px 16px 0; }
+.flujo-mini-nombre { flex: 1 0 100%; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 2px 8px; font-size: 13.5px; font-weight: 600; }
+.flujo-mini-nombre .chip { font-size: 12px; }
+.flujo-mini strong { font-family: var(--fuente-titulos); font-size: 22px; font-weight: 600; line-height: 1.25; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.flujo-mini strong.is-largo { font-size: 20px; }
+.flujo-mini small { flex: 1 1 9ch; min-width: 9ch; color: var(--tinta-2); font-size: 12.5px; line-height: 1.35; }
+.flujo-mini.is-locked small { display: inline-flex; align-items: center; gap: 5px; }
+.flujo-compacto-pie { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 16px; padding: 9px 16px; border-top: 1px solid var(--linea); background: var(--superficie); color: var(--tinta-2); font-size: 13px; }
+@media (hover: hover) and (pointer: fine) {
+  .flujo-mini:hover { color: var(--tinta); }
+  .flujo-mini:hover .flujo-mini-nombre { color: var(--acento-fuerte); }
+  .flujo-mini:hover .fl-top.is-base { fill: var(--acento-tinte); stroke: var(--acento); }
+}
+
+/* ------------------------------------------------------------------ 6. Celular */
+@media (max-width: 1040px) {
+  .flujo-texto { padding-inline: 12px; }
+  .flujo-estacion strong { font-size: 26px; }
+  .flujo-estacion strong.is-largo { font-size: 20px; }
+  .flujo-panel-cuerpo { grid-template-columns: minmax(0, 1fr); }
+  .flujo-ficha > p { max-width: 70ch; }
+  .flujo-mini-texto { padding-inline: 10px; }
+  .flujo-mini .flujo-escena { width: 132px; height: 66px; margin-inline: 6px auto; }
+  .flujo-compacto-linea::before { top: 52px; height: 4px; }
+}
+@media (max-width: 760px) {
+  /* Línea de tiempo vertical: cada estación es una fila y su panel se abre justo debajo. */
+  .flujo { display: flex; flex-direction: column; }
+  .flujo-linea { display: contents; }
+  .flujo-paso { position: relative; border-bottom: 1px solid var(--linea); background: var(--superficie-2); }
+  .flujo-paso::before { content: ""; position: absolute; left: 61px; top: 0; bottom: 0; width: 2px; background: var(--linea-fuerte); }
+  .flujo-paso-1::before { top: 50%; }
+  .flujo-paso-6::before { bottom: 50%; }
+  .flujo-paso-1 { order: 1; } .flujo-pos-1 { order: 2; }
+  .flujo-paso-2 { order: 3; } .flujo-pos-2 { order: 4; }
+  .flujo-paso-3 { order: 5; } .flujo-pos-3 { order: 6; }
+  .flujo-paso-4 { order: 7; } .flujo-pos-4 { order: 8; }
+  .flujo-paso-5 { order: 9; } .flujo-pos-5 { order: 10; }
+  .flujo-paso-6 { order: 11; } .flujo-pos-6 { order: 12; }
+  .flujo-estacion, .flujo-estacion[aria-selected="true"] { position: relative; grid-template-columns: 100px minmax(0, 1fr); align-items: center; min-height: 84px; margin: 0; padding: 8px 14px 8px 12px; box-shadow: inset 3px 0 0 transparent; }
+  .flujo-estacion[aria-selected="true"] { box-shadow: inset 3px 0 0 var(--acento); }
+  .flujo-escena .is-duct, .flujo-escena .fl-arrow, .flujo-pulso { display: none; }
+  .flujo-texto { grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 0 10px; padding: 0 0 0 8px; }
+  .flujo-nombre { grid-column: 1 / -1; }
+  .flujo-estacion strong, .flujo-estacion strong.is-largo { grid-column: 1; margin-top: 2px; font-size: 24px; }
+  .flujo-estacion small { grid-column: 1; min-height: 0; }
+  .flujo-estacion .chip { grid-column: 2; grid-row: 2 / span 2; margin-top: 0; }
+  .flujo-candado { grid-column: 1 / -1; margin-top: 2px; }
+  .flujo-panel { padding: 16px 14px 18px; border-bottom: 1px solid var(--linea); }
+  .flujo-ficha .actions .btn { width: 100%; }
+  .flujo-registros .prio-item { padding: 11px 12px; }
+
+  .flujo-compacto-linea { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .flujo-compacto-linea::before { display: none; }
+  .flujo-compacto-linea li { border-bottom: 1px solid var(--linea); }
+  .flujo-compacto-linea li:nth-child(odd) { border-right: 1px solid var(--linea); }
+  .flujo-compacto-linea li:nth-last-child(-n + 2) { border-bottom: 0; }
+  .flujo-mini { min-height: 64px; padding: 10px 0; }
+  .flujo-mini .flujo-escena { display: none; }
+}
+
+/* ------------------------------------------ 7. Movimiento reducido e impresión */
+@media (prefers-reduced-motion: reduce) {
+  .flujo-pulso { display: none; }
+}
+@media print {
+  .flujo-pulso { display: none; }
+  .flujo-panel[hidden] { display: block !important; }
+}

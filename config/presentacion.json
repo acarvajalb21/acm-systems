@@ -1,0 +1,19 @@
+{
+  "_ayuda": [
+    "Contenido editable de la sección «Quiénes somos» de la página de presentación (/presentacion/).",
+    "Lo que quede vacío no se muestra. Después de editar, guarde el archivo en UTF-8 y recargue la página; no hay que reiniciar.",
+    "texto_equipo: frase que encabeza la sección. Si se deja vacía se usa «Equipo de desarrollo del proyecto».",
+    "equipo: lista de integrantes. Cada uno es un objeto con: nombre (obligatorio), rol, descripcion (una o dos frases), enlace (opcional; solo se acepta si empieza por https://) e imagen (opcional; nombre de un archivo .png, .jpg, .jpeg o .webp guardado en static/equipo/).",
+    "Ejemplo de integrante: {\"nombre\": \"\", \"rol\": \"\", \"descripcion\": \"\", \"enlace\": \"\", \"imagen\": \"\"}",
+    "institucion, programa, asignatura, tutor, contacto y anio: textos cortos. El contacto se muestra como texto, sin enlace.",
+    "Las claves que empiezan por guion bajo, como esta, se ignoran."
+  ],
+  "texto_equipo": "Equipo de desarrollo del proyecto",
+  "equipo": [],
+  "institucion": "",
+  "programa": "",
+  "asignatura": "",
+  "tutor": "",
+  "contacto": "",
+  "anio": ""
+}

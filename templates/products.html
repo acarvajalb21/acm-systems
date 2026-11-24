@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block title %}Catálogo de productos{% endblock %}
+{% block heading %}Catálogo de productos{% endblock %}
+{% block content %}
+<div class="page-head">
+  <p>Referencias que maneja la empresa, con su presentación, su proveedor y el mínimo que dispara la alerta.</p>
+  {% if manager %}<div class="actions"><a class="btn btn-primary" href="{% url 'new_product' %}">{% icon 'plus' %}Nueva referencia</a></div>{% endif %}
+</div>
+<section class="card">
+  <div class="toolbar"><div class="search">{% icon 'search' %}<input class="input" type="search" placeholder="Buscar por nombre, código o fabricante" data-filter="#tabla-productos" aria-label="Buscar"></div><form class="filters" method="get"><select class="input" name="categoria" data-autosubmit aria-label="Categoría"><option value="">Todas las categorías</option>{% for value, label in categories %}<option value="{{ value }}"{% if category == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></form><span class="muted">{{ products|length }} referencia{{ products|length|pluralize }}</span></div>
+  <div class="table-wrap"><table id="tabla-productos" class="mobile-records">
+    <thead><tr><th scope="col">Código</th><th scope="col">Referencia</th><th scope="col">Fabricante</th><th scope="col">Presentación</th><th scope="col">Unidad</th><th scope="col" class="num">Mínimo</th><th scope="col">Almacenamiento</th><th scope="col">Estado</th>{% if manager %}<th scope="col"><span class="sr-only">Acciones</span></th>{% endif %}</tr></thead>
+    <tbody>{% for p in products %}<tr>
+      <td class="nowrap" data-label="Código">{{ p.code }}</td>
+      <td class="record-title" data-label="Referencia"><span class="cell-title">{{ p.name }}</span><small>{{ p.get_category_display }}{% if p.generic %} · {{ p.generic }}{% endif %}</small></td>
+      <td data-label="Fabricante">{{ p.manufacturer|default:"—" }}</td>
+      <td data-label="Presentación">{{ p.presentation|default:"—" }}</td>
+      <td data-label="Unidad">{{ p.unit }}</td>
+      <td class="num" data-label="Mínimo">{{ p.minimum|default_if_none:"—" }}</td>
+      <td data-label="Almacenamiento">{% if p.controlled_storage %}<span class="chip plain">Almacenamiento controlado</span>{% else %}<span class="faint">Ambiente</span>{% endif %}</td>
+      <td data-label="Estado">{% if p.active %}<span class="chip ok">Activa</span>{% else %}<span class="chip">Inactiva</span>{% endif %}</td>
+      {% if manager %}<td class="num record-actions" data-label="Acciones"><a class="btn btn-sm btn-ghost" href="{% url 'product_codes' p.pk %}">{% icon 'tag' 'sm' %}Códigos</a><a class="btn btn-sm btn-ghost" href="{% url 'edit_product' p.pk %}">{% icon 'edit' 'sm' %}Editar</a></td>{% endif %}
+    </tr>{% empty %}<tr class="empty-row"><td colspan="{% if manager %}9{% else %}8{% endif %}"><div class="empty">{% icon 'tag' %}<strong>El catálogo está vacío</strong>Cree las referencias con «Nueva referencia» antes de registrar facturas o saldos.</div></td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endblock %}

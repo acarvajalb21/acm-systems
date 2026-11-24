@@ -1,0 +1,40 @@
+{% load static %}<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#141d20">
+<title>{% block title %}{{ title|default:"Resumen" }}{% endblock %} · {{ app_name|default:"ACM Systems" }}</title>
+<link rel="icon" type="image/png" href="{% static 'icono/favicon.png' %}">
+<link rel="icon" type="image/svg+xml" href="{% static 'icono/icono.svg' %}">
+<link rel="apple-touch-icon" href="{% static 'icono/apple-180.png' %}">
+<link rel="manifest" href="{% url 'manifest' %}">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ACM Systems">
+<link rel="stylesheet" href="{% static 'app.css' %}">
+{% block estilos %}{% endblock %}
+</head>
+<body data-sw="{% url 'service_worker' %}">
+<div class="page-progress" aria-hidden="true"></div>
+<a class="skip-link" href="#contenido">Saltar al contenido</a>
+<div class="app">
+  {% if section == 'replenishment' %}{% include '_nav.html' with grupo='inventario' %}{% else %}{% include '_nav.html' with grupo=nav_group %}{% endif %}
+  {% block feria_bar %}{% include 'feria/_barra_recorrido.html' %}{% endblock %}
+  <div class="main">
+    <main class="content" id="contenido" tabindex="-1"{% block main_attrs %}{% endblock %}>
+      <header class="page-header">
+        {% block crumbs %}{% endblock %}
+        <h1>{% block heading %}{{ title }}{% endblock %}</h1>
+      </header>
+      {% include '_messages.html' %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+<script src="{% static 'app.js' %}" defer></script>
+<script src="{% static 'operation-guide.js' %}" defer></script>
+<script src="{% static 'motion.js' %}" defer></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

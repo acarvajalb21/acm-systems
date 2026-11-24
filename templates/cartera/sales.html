@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block title %}Ventas y facturas{% endblock %}
+{% block heading %}Ventas y facturas{% endblock %}
+{% block content %}
+<div class="page-head">
+  <p>Prepare la venta, revísela y envíela al sistema contable, que le asigna el número a la factura y genera su PDF. En esta demostración el sistema contable es simulado y las facturas no tienen validez fiscal.</p>
+  <div class="actions">
+    <a class="btn" href="{% url 'parties' %}">{% icon 'users' %}Clientes</a>
+    <a class="btn btn-primary" href="{% url 'sale_new' %}">{% icon 'plus' %}Nueva venta</a>
+  </div>
+</div>
+<div class="kpis">
+  <div class="kpi"><span class="kpi-icon">{% icon 'file-text' 'lg' %}</span><span class="kpi-body"><span class="kpi-label">Emitido hoy</span><span class="kpi-value">{{ k_today|pesos }}</span><span class="kpi-sub">{{ k_today_n }} factura{{ k_today_n|pluralize }}</span></span></div>
+  <div class="kpi"><span class="kpi-icon warn">{% icon 'edit' 'lg' %}</span><span class="kpi-body"><span class="kpi-label">Borradores y rechazos</span><span class="kpi-value">{{ counts.borradores }}</span><span class="kpi-sub">{% if can_issue %}Listos para revisar y enviar{% else %}Los envía una persona autorizada{% endif %}</span></span></div>
+  <div class="kpi"><span class="kpi-icon {% if counts.pendientes %}bad{% else %}ok{% endif %}">{% icon 'clock' 'lg' %}</span><span class="kpi-body"><span class="kpi-label">Envíos por resolver</span><span class="kpi-value">{{ counts.pendientes }}</span><span class="kpi-sub">Enviando o con resultado incierto</span></span></div>
+</div>
+<section class="card">
+  <form class="toolbar" method="get">
+    <div class="tabs">
+      <a href="?vista=todas" class="{% if tab == 'todas' %}is-active{% endif %}">Todas</a>
+      <a href="?vista=borradores" class="{% if tab == 'borradores' %}is-active{% endif %}">Borradores{% if counts.borradores %}<span class="count">{{ counts.borradores }}</span>{% endif %}</a>
+      <a href="?vista=pendientes" class="{% if tab == 'pendientes' %}is-active{% endif %}">Por resolver{% if counts.pendientes %}<span class="count">{{ counts.pendientes }}</span>{% endif %}</a>
+      <a href="?vista=emitidas" class="{% if tab == 'emitidas' %}is-active{% endif %}">Emitidas</a>
+    </div>
+    <input type="hidden" name="vista" value="{{ tab }}">
+    <div class="search">{% icon 'search' %}<input class="input" type="search" name="q" value="{{ q }}" placeholder="Cliente, documento o factura" aria-label="Buscar venta"></div>
+  </form>
+  <div class="table-wrap"><table class="mobile-records">
+    <thead><tr><th scope="col">Venta</th><th scope="col">Cliente</th><th scope="col">Contexto</th><th scope="col">Fecha</th><th scope="col">Pago</th><th scope="col" class="num">Total</th><th scope="col">Estado</th></tr></thead>
+    <tbody>{% for s in sales %}<tr>
+      <td class="record-title" data-label="Venta"><a class="cell-title" href="{% url 'sale' s.pk %}">{{ s.label }}</a><small>{{ s.created_by.display_name }}</small></td>
+      <td data-label="Tercero">{{ s.party.name }}<small>{{ s.party.get_id_type_display }} {{ s.party.identification }}</small></td>
+      <td data-label="Contexto">{{ s.get_context_display }}</td>
+      <td class="nowrap" data-label="Fecha">{{ s.issue_date|date:"d/m/Y" }}</td>
+      <td data-label="Pago">{{ s.get_condition_display }}{% if s.due_date %}<small>vence {{ s.due_date|date:"d/m/Y" }}</small>{% endif %}</td>
+      <td class="num strong" data-label="Total">{{ s.total|cop }}</td>
+      <td data-label="Estado">{% include 'cartera/_sale_status.html' %}</td>
+    </tr>{% empty %}<tr class="empty-row"><td colspan="7"><div class="empty">{% icon 'file-text' %}<strong>No hay ventas en esta vista</strong><a class="btn btn-sm btn-primary" href="{% url 'sale_new' %}">Registrar una venta</a></div></td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endblock %}

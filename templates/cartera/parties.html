@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block title %}Clientes{% endblock %}
+{% block heading %}Clientes{% endblock %}
+{% block content %}
+<div class="page-head">
+  <p>Clientes con su identificación fiscal, sus contactos de cobranza y los pagadores que ya se conocen.</p>
+  <div class="actions"><a class="btn btn-primary" href="{% url 'party_new' %}">{% icon 'plus' %}Nuevo cliente</a></div>
+</div>
+<section class="card">
+  <form class="toolbar" method="get">
+    <div class="search">{% icon 'search' %}<input class="input" type="search" name="q" value="{{ q }}" placeholder="Nombre o identificación" aria-label="Buscar cliente"></div>
+  </form>
+  <div class="table-wrap"><table class="mobile-records">
+    <thead><tr><th scope="col">Cliente</th><th scope="col">Contexto habitual</th><th scope="col">Lista de precios</th><th scope="col" class="num">Ventas</th><th scope="col" class="num">Saldo</th><th scope="col"><span class="sr-only">Acciones</span></th></tr></thead>
+    <tbody>{% for p in parties %}<tr>
+      <td class="record-title" data-label="Tercero"><a class="cell-title" href="{% url 'party' p.pk %}">{{ p.name }}</a><small>{{ p.get_id_type_display }} {{ p.identification }}{% if not p.active %} · inactivo{% endif %}</small></td>
+      <td data-label="Contexto">{{ p.get_default_context_display }}</td>
+      <td data-label="Lista de precios">{{ p.price_list.name|default:"—" }}</td>
+      <td class="num" data-label="Ventas">{{ p.n_sales }}</td>
+      <td class="num strong" data-label="Saldo">{% if p.balance %}{{ p.balance|cop }}{% else %}<span class="faint">—</span>{% endif %}</td>
+      <td class="num record-actions" data-label="Acciones"><a class="btn btn-sm" href="{% url 'sale_new' %}?tercero={{ p.pk }}">Nueva venta</a></td>
+    </tr>{% empty %}<tr class="empty-row"><td colspan="6"><div class="empty">{% icon 'users' %}<strong>No hay clientes en esta lista</strong><small>Cambie la búsqueda o use «Nuevo cliente» para registrar uno.</small></div></td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endblock %}

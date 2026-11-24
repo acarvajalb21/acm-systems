@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Recorrido guiado{% endblock %}
+{% block heading %}Recorrido guiado{% endblock %}
+{% block estilos %}<link rel="stylesheet" href="{% static 'modulos/resumen.css' %}">{% endblock %}
+{% block content %}
+<div class="page-head">
+  <p>Siete pasos para mostrar la plataforma en cinco a siete minutos. Al iniciarlo, una barra acompaña en cada pantalla con el paso actual, qué mostrar y «Siguiente». Todo ocurre sobre un escenario con datos sintéticos: pedidos, banco, mensajes y sistema contable son simulados.</p>
+  <form class="actions" method="post" action="{% url 'tour' %}">{% csrf_token %}
+    {% if active %}<button class="btn" type="submit" name="accion" value="terminar">Terminar el recorrido</button>
+    <button class="btn btn-primary" type="submit" name="accion" value="iniciar">{% icon 'play' %}Volver al paso 1</button>
+    {% else %}<button class="btn btn-primary" type="submit" name="accion" value="iniciar">{% icon 'play' %}Iniciar el recorrido</button>{% endif %}
+  </form>
+</div>
+
+{% if not ready %}<div class="callout warn">{% icon 'info' %}<p>El escenario de la demostración todavía no se ha generado. El recorrido funciona, pero cada paso abre la pantalla general de su módulo en lugar de un registro preparado.</p></div>{% endif %}
+
+<section class="card" aria-label="Pasos del recorrido">
+  <ol class="recorrido-pasos">
+    {% for s in steps %}<li class="recorrido-paso{% if s.current %} is-current{% elif s.done %} is-done{% endif %}" id="paso-{{ s.n }}"{% if s.current %} aria-current="step"{% endif %}>
+      <span class="recorrido-numero" aria-hidden="true">{{ s.n }}</span>
+      <div class="recorrido-cuerpo">
+        <h2><span class="sr-only">Paso {{ s.n }}: </span>{{ s.title }}{% if s.current %} <span class="chip ok">Paso en curso</span>{% endif %}</h2>
+        <p class="recorrido-mostrar"><strong>Qué mostrar.</strong> {{ s.show }}</p>
+        <p class="recorrido-guion"><span class="recorrido-rotulo">Guion</span>{{ s.script }}</p>
+        {% if s.codes %}<details class="chart-table recorrido-codigos"><summary>Códigos de prueba para teclear (sin cámara)</summary>
+          <ul>{% for c in s.codes %}<li><span class="recorrido-codigo">{{ c.code }}</span>{% if c.label %}<small>{{ c.label }}</small>{% endif %}</li>{% endfor %}</ul></details>{% endif %}
+        {% if s.allowed %}
+        <form class="actions recorrido-acciones" method="post" action="{% url 'tour' %}">{% csrf_token %}<input type="hidden" name="paso" value="{{ s.n }}">
+          <button class="btn btn-sm{% if s.current %} btn-primary{% endif %}" type="submit" name="accion" value="ir">Abrir este paso {% icon 'arrow-right' 'sm' %}</button>
+          {% for label, url in s.extra %}<a class="text-link" href="{{ url }}">{{ label }}</a>{% endfor %}
+          <span class="tag">{% if s.record %}{% icon 'check' 'sm' %}{{ s.record }}{% elif s.prepared %}{% icon 'check' 'sm' %}Listo para mostrar{% else %}{% icon 'info' 'sm' %}Abre la pantalla general del módulo{% endif %}</span>
+        </form>
+        {% else %}
+        <div class="callout warn recorrido-perfil">{% icon 'lock' %}<p>Este paso necesita el perfil {{ s.needs }}; el suyo es {{ user.get_role_display }}. El recorrido no cambia permisos{% if demo_profiles %}: cambie de perfil y continúe desde aquí{% elif profile_switch %}: ingrese con una cuenta de ese perfil y continúe desde aquí{% endif %}.</p></div>
+        {% for p in demo_profiles %}{% if p.role == s.switch_role %}<form class="actions recorrido-acciones" method="post" action="{% url 'demo_profile' %}">{% csrf_token %}<input type="hidden" name="next" value="{% url 'tour' %}#paso-{{ s.n }}">
+          <button class="btn btn-sm" type="submit" name="perfil" value="{{ p.key }}">{% icon 'users' 'sm' %}Cambiar al perfil {{ p.label }} ({{ p.name }})</button></form>{% endif %}{% endfor %}
+        {% endif %}
+      </div>
+    </li>{% endfor %}
+  </ol>
+</section>
+{% endblock %}

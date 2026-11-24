@@ -1,0 +1,59 @@
+{% load static %}{% comment %}Navegación completa. Parámetro: grupo (resumen, operaciones, inventario, compras, finanzas, inteligencia, admin o vacío).{% endcomment %}
+<header class="topbar">
+  <div class="topbar-row">
+    <a class="brand" href="{% url 'home' %}" aria-label="{{ app_name }}: ir al resumen">
+      <img class="brand-mark" src="{% static 'icono/icono.svg' %}" alt="" width="30" height="30">
+      <span class="brand-text"><span class="brand-name">{{ app_name }}</span><span class="demo-flag">Demostración con datos sintéticos</span></span>
+    </a>
+    <nav class="group-nav" aria-label="Grupos de tareas">
+      <a class="group-link" href="{% url 'home' %}"{% if grupo == 'resumen' %} aria-current="true"{% endif %}>Resumen</a>
+      <a class="group-link" href="{% url 'operations' %}"{% if grupo == 'operaciones' %} aria-current="true"{% endif %}>Operaciones</a>
+      {% if manager %}<a class="group-link" href="{% url 'stock' %}"{% if grupo == 'inventario' %} aria-current="true"{% endif %}>Inventario</a>{% elif documents %}<a class="group-link" href="{% url 'products' %}"{% if grupo == 'inventario' %} aria-current="true"{% endif %}>Inventario</a>{% endif %}
+      {% if documents %}<a class="group-link" href="{% url 'invoices' %}"{% if grupo == 'compras' %} aria-current="true"{% endif %}>Compras</a>{% endif %}
+      {% if sales_role %}<a class="group-link" href="{% url 'sales' %}"{% if grupo == 'finanzas' %} aria-current="true"{% endif %}>Finanzas</a>{% endif %}
+      {% url 'copilot' as u_copilot %}<a class="group-link" href="{% if agents_visible %}{% url 'agents' %}{% elif u_copilot %}{{ u_copilot }}{% else %}{% url 'home' %}{% endif %}"{% if grupo == 'inteligencia' %} aria-current="true"{% endif %}>Inteligencia{% if agents_pending %} <span class="nav-count" aria-label="{{ agents_pending }} propuestas por revisar">{{ agents_pending }}</span>{% endif %}</a>
+    </nav>
+    <div class="topbar-actions">
+      {% if u_copilot %}<a class="copilot-link" href="{{ u_copilot }}"{% if section == 'copilot' %} aria-current="page"{% endif %} aria-label="Abrir el copiloto">{% icon 'activity' %}<span>Copiloto</span></a>{% endif %}
+      <a class="icon-btn" href="{% url 'alerts' %}" aria-label="Alertas{% if unread_alerts %}: {{ unread_alerts }} sin leer{% endif %}"{% if section == 'alerts' %} aria-current="page"{% endif %}>{% icon 'bell' %}{% if unread_alerts %}<span class="dot" aria-hidden="true">{{ unread_alerts }}</span>{% endif %}</a>
+      <details class="user-menu">
+        <summary aria-label="Menú de {{ user.display_name }}"><span class="avatar" aria-hidden="true">{{ user.initials }}</span><span class="user-meta"><strong>{{ user.display_name }}</strong><small>{{ user.get_role_display }}</small></span>{% icon 'chevron-down' 'sm' %}</summary>
+        <div class="menu-panel">
+          <a href="{% url 'alerts' %}"{% if section == 'alerts' %} aria-current="page"{% endif %}>{% icon 'bell' 'sm' %}Alertas{% if unread_alerts %}<span class="menu-count">{{ unread_alerts }}</span>{% endif %}</a>
+          {% if documents %}<a href="{% url 'settings' %}">{% icon 'sliders' 'sm' %}Configuración de alertas</a>{% endif %}
+          {% if administrator %}<a href="{% url 'users' %}"{% if section == 'users' %} aria-current="page"{% endif %}>{% icon 'users' 'sm' %}Usuarios</a>
+          <a href="{% url 'audit' %}"{% if section == 'audit' %} aria-current="page"{% endif %}>{% icon 'shield' 'sm' %}Auditoría</a>{% endif %}
+          {% if profile_switch and demo_profiles %}<hr>
+          {% include 'feria/_cambiar_perfil.html' %}{% endif %}
+          <hr>
+          <a href="{% url 'landing' %}">{% icon 'info' 'sm' %}Acerca del proyecto</a>
+          <a href="{% url 'password_change' %}">{% icon 'key' 'sm' %}Cambiar contraseña</a>
+          <form action="{% url 'logout' %}" method="post">{% csrf_token %}<button type="submit">{% icon 'log-out' 'sm' %}Cerrar sesión</button></form>
+        </div>
+      </details>
+    </div>
+  </div>
+</header>
+{% if grupo %}<nav class="subnav" aria-label="Páginas de este grupo"><div class="subnav-row">{% include '_nav_pages.html' with g=grupo cls='subnav-link' %}</div></nav>{% endif %}
+
+<nav class="mobile-nav" aria-label="Grupos de tareas">
+  <a href="{% url 'home' %}"{% if grupo == 'resumen' %} aria-current="true"{% endif %}>{% icon 'home' %}<span>Resumen</span></a>
+  <a href="{% url 'operations' %}"{% if grupo == 'operaciones' %} aria-current="true"{% endif %}>{% icon 'clipboard' %}<span>Operaciones</span></a>
+  {% if manager %}<a href="{% url 'stock' %}"{% if grupo == 'inventario' %} aria-current="true"{% endif %}>{% icon 'layers' %}<span>Inventario</span></a>
+  {% elif sales_role %}<a href="{% url 'sales' %}"{% if grupo == 'finanzas' %} aria-current="true"{% endif %}>{% icon 'dollar' %}<span>Finanzas</span></a>{% endif %}
+  {% if manager and sales_role %}<a href="{% url 'sales' %}"{% if grupo == 'finanzas' %} aria-current="true"{% endif %}>{% icon 'dollar' %}<span>Finanzas</span></a>
+  {% elif documents %}<a href="{% url 'invoices' %}"{% if grupo == 'compras' %} aria-current="true"{% endif %}>{% icon 'truck' %}<span>Compras</span></a>
+  {% else %}<a href="{% if agents_visible %}{% url 'agents' %}{% elif u_copilot %}{{ u_copilot }}{% else %}{% url 'home' %}{% endif %}"{% if grupo == 'inteligencia' %} aria-current="true"{% endif %}>{% icon 'activity' %}<span>Inteligencia</span></a>{% endif %}
+  <button type="button" data-nav-toggle aria-controls="mas-opciones" aria-expanded="false">{% icon 'menu' %}<span>Más</span></button>
+</nav>
+<div class="scrim" data-nav-close></div>
+<div class="more-sheet" id="mas-opciones" role="dialog" aria-modal="true" aria-labelledby="mas-titulo">
+  <div class="more-head"><h2 id="mas-titulo">Todas las páginas</h2><button class="icon-btn" type="button" data-nav-close aria-label="Cerrar">{% icon 'x' %}</button></div>
+  <section class="more-group"><h3>Resumen</h3><div class="more-links">{% include '_nav_pages.html' with g='resumen' cls='more-link' %}</div></section>
+  <section class="more-group"><h3>Operaciones</h3><div class="more-links">{% include '_nav_pages.html' with g='operaciones' cls='more-link' %}</div></section>
+  {% if documents %}<section class="more-group"><h3>Inventario</h3><div class="more-links">{% include '_nav_pages.html' with g='inventario' cls='more-link' %}</div></section>
+  <section class="more-group"><h3>Compras</h3><div class="more-links">{% include '_nav_pages.html' with g='compras' cls='more-link' %}</div></section>{% endif %}
+  {% if sales_role %}<section class="more-group"><h3>Finanzas</h3><div class="more-links">{% include '_nav_pages.html' with g='finanzas' cls='more-link' %}</div></section>{% endif %}
+  <section class="more-group"><h3>Inteligencia</h3><div class="more-links">{% include '_nav_pages.html' with g='inteligencia' cls='more-link' %}</div></section>
+  <section class="more-group"><h3>{{ user.display_name }} · {{ user.get_role_display }}</h3><div class="more-links">{% include '_nav_pages.html' with g='admin' cls='more-link' %}<a class="more-link" href="{% url 'landing' %}">Acerca del proyecto</a><a class="more-link" href="{% url 'password_change' %}">Cambiar contraseña</a><form action="{% url 'logout' %}" method="post">{% csrf_token %}<button type="submit">Cerrar sesión</button></form></div></section>
+</div>

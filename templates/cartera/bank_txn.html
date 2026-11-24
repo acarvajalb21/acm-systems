@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+{% block crumbs %}<p class="crumbs"><a href="{% url 'bank' %}">{% icon 'arrow-left' 'sm' %} Banco y recaudos</a></p>{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="card-body">
+    <div class="detail-head">
+      <div>
+        <h2>{{ txn.amount|cop }} · {{ txn.date|date:"d/m/Y" }}</h2>
+        <p class="muted">{{ txn.description|default:"Sin descripción" }}{% if txn.reference %} · ref. {{ txn.reference }}{% endif %}</p>
+        {% if txn.status == 'pending' %}<span class="chip warn">Por identificar</span>{% elif txn.status == 'identified' %}<span class="chip info">Saldo sin aplicar {{ left|cop }}</span>{% elif txn.status == 'applied' %}<span class="chip ok">Aplicado</span>{% else %}<span class="chip plain">Ajeno a cartera</span>{% endif %}
+      </div>
+      <div class="actions">
+        {% if txn.status == 'other' and txn.amount > 0 %}<form method="post" action="{% url 'bank_reopen' txn.pk %}">{% csrf_token %}{{ token_form.token }}<button class="btn" type="submit">Devolver a «Por identificar»</button></form>{% endif %}
+        {% if txn.status == 'pending' %}<details class="confirm"><summary class="btn btn-ghost">No es de cartera</summary>
+          <div class="confirm-panel"><form method="post" action="{% url 'bank_other' txn.pk %}">{% csrf_token %}{{ note_form.token }}
+            <label for="other-note">Motivo</label><input class="input" id="other-note" name="note" maxlength="300" placeholder="Por ejemplo: rendimientos, traslado entre cuentas" required>
+            <button class="btn btn-block" type="submit">Marcar como ajeno a cartera</button></form></div></details>{% endif %}
+      </div>
+    </div>
+    <dl class="meta">
+      <div><dt>Cuenta receptora</dt><dd>{{ txn.account }}</dd></div>
+      <div><dt>Cuenta de origen</dt><dd>{{ txn.origin_account|default:"No informada" }}</dd></div>
+      <div><dt>Titular que transfirió</dt><dd>{{ txn.holder_name|default:"No informado" }}{% if txn.holder_id %} <small>· identificación {{ txn.holder_id }}</small>{% endif %}</dd></div>
+      <div><dt>Cliente facturado</dt><dd>{% if txn.party %}<a href="{% url 'party' txn.party_id %}">{{ txn.party.name }}</a>{% else %}Sin identificar{% endif %}</dd></div>
+      <div><dt>Extracto</dt><dd class="light">{{ txn.statement.file_name }}</dd></div>
+      {% if txn.note %}<div class="span-all"><dt>Nota</dt><dd class="light">{{ txn.note }}</dd></div>{% endif %}
+    </dl>
+  </div>
+</section>
+
+{% if txn.amount > 0 and txn.status != 'other' and left > 0 %}
+<section class="card">
+  <div class="card-head"><div><h2>¿De quién es este pago?</h2><p>{% if result.decision == 'suggested' %}Hay un cliente sugerido. Revise las razones y confirme.{% elif result.decision == 'ambiguous' %}Hay varios clientes con la misma evidencia: el movimiento sigue por identificar hasta que contabilidad decida.{% elif result.decision == 'weak' %}Solo hay coincidencias débiles: confirme con el soporte del pago antes de elegir.{% else %}No hay coincidencias. Si tiene el soporte del pago, elija el cliente en la lista de abajo.{% endif %}</p></div></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th scope="col">Cliente</th><th scope="col">Confianza</th><th scope="col">Razones</th><th scope="col"><span class="sr-only">Acciones</span></th></tr></thead>
+    <tbody>{% for c in result.candidates %}<tr>
+      <td><span class="cell-title">{{ c.party.name }}</span><small>{{ c.party.identification }}</small></td>
+      <td>{% if c.level == 3 %}<span class="chip ok">Alta</span>{% elif c.level == 2 %}<span class="chip info">Media</span>{% else %}<span class="chip">Baja</span>{% endif %}</td>
+      <td><ul class="stack">{% for r in c.reasons %}<li><small>{{ r }}</small></li>{% endfor %}</ul></td>
+      <td class="num"><a class="btn btn-sm{% if party and party.pk == c.party.pk %} btn-primary{% endif %}" href="?tercero={{ c.party.pk }}">{% if party and party.pk == c.party.pk %}Elegido{% else %}Elegir{% endif %}</a></td>
+    </tr>{% empty %}<tr><td colspan="4"><div class="empty">{% icon 'search' %}<strong>Sin candidatos automáticos</strong><small>Elija el cliente en la lista de abajo si tiene el soporte del pago.</small></div></td></tr>{% endfor %}</tbody>
+  </table></div>
+  <form class="toolbar" method="get"><label class="sr-only" for="pick-party">Otro cliente</label>
+    <select class="input" id="pick-party" name="tercero"><option value="">Elegir otro cliente…</option>{% for p in parties %}<option value="{{ p.pk }}"{% if party and party.pk == p.pk %} selected{% endif %}>{{ p.name }} · {{ p.identification }}</option>{% endfor %}</select>
+    <button class="btn" type="submit">Ver facturas</button></form>
+</section>
+
+{% if result.counter %}<section class="card">
+  <div class="card-head"><div><h2>Recaudos de contado sin conciliar</h2><p>Si este ingreso corresponde a ventas de contado ya registradas (datáfono o transferencia), concílielo aquí para no aplicarlo dos veces.</p></div></div>
+  <form method="post" action="{% url 'bank_counter' txn.pk %}">{% csrf_token %}{{ token_form.token }}
+    <div class="table-wrap"><table><tbody>{% for c in result.counter %}<tr>
+      <td><input class="check" type="checkbox" name="collection" value="{{ c.pk }}" id="col-{{ c.pk }}" aria-label="Conciliar recaudo {{ c.reference }}"></td>
+      <td><label for="col-{{ c.pk }}">{{ c.party.name }}</label><small>{{ c.sale.label }} · {{ c.get_method_display }} {{ c.reference }}</small></td>
+      <td class="nowrap">{{ c.date|date:"d/m/Y" }}</td><td class="num">{{ c.amount|cop }}</td>
+    </tr>{% endfor %}</tbody></table></div>
+    <div class="form-actions"><button class="btn" type="submit">Conciliar con los recaudos seleccionados</button></div>
+  </form>
+</section>{% endif %}
+
+{% if party and left > 0 %}<section class="card">
+  <div class="card-head"><div><h2>Aplicar a facturas de {{ party.name }}</h2><p>Propuesta: primero las facturas mencionadas en el pago y luego las de vencimiento más antiguo. Puede cambiar los valores.</p></div></div>
+  {% if error %}<div class="form-errors" role="alert">{% icon 'alert-circle' %}<p>{{ error }}</p></div>{% endif %}
+  <form method="post">{% csrf_token %}{{ token_form.token }}<input type="hidden" name="action" value="apply"><input type="hidden" name="party" value="{{ party.pk }}">
+    <div class="table-wrap"><table>
+      <thead><tr><th scope="col">Factura</th><th scope="col">Vencimiento</th><th scope="col" class="num">Saldo</th><th scope="col" class="num">Aplicar</th></tr></thead>
+      <tbody>{% for r in recs %}<tr>
+        <td><span class="cell-title">{{ r.document }}</span><small>{{ r.get_source_display }}{% if r.mentioned %} · <span class="chip info">mencionada en el pago</span>{% endif %}</small></td>
+        <td class="nowrap">{{ r.due_date|date:"d/m/Y" }}</td>
+        <td class="num">{{ r.balance|cop }}</td>
+        <td class="num w-md"><input class="input" type="text" inputmode="decimal" name="amount_{{ r.pk }}" value="{% if r.proposed %}{{ r.proposed|floatformat:'2u' }}{% endif %}" aria-label="Valor a aplicar a {{ r.document }}"></td>
+      </tr>{% empty %}<tr><td colspan="4"><div class="empty">{% icon 'check-circle' %}<strong>El cliente no tiene facturas con saldo</strong><small>Elija otro cliente o deje el valor como saldo sin aplicar.</small></div></td></tr>{% endfor %}</tbody>
+    </table></div>
+    <div class="card-body">
+      <p class="help">Saldo del movimiento por aplicar: <strong>{{ left|cop }}</strong>{% if excess %} · Excedente sobre las facturas abiertas: <strong>{{ excess|cop }}</strong> (queda sin aplicar hasta que contabilidad decida).{% endif %}</p>
+      {% if txn.payer %}<div class="form-grid">
+        <div class="field field-check"><input class="check" type="checkbox" name="remember" id="remember" value="1"{% if not payer_known %} checked{% endif %}><label for="remember">Recordar que {{ txn.payer }} paga por {{ party.name }}</label></div>
+        <div class="field"><label for="relation">Relación <span class="optional">opcional</span></label><input class="input" id="relation" name="relation" maxlength="80" placeholder="Por ejemplo: socio, contador, empresa matriz"></div>
+      </div>{% endif %}
+      {% if recs %}<div class="form-actions"><button class="btn btn-primary" type="submit">{% icon 'check' %}Confirmar y registrar el recibo en el sistema contable</button></div>{% endif %}
+    </div>
+  </form>
+</section>{% endif %}
+{% endif %}
+
+{% if txn.amount < 0 %}<section class="card">
+  <div class="card-head"><div><h2>Pago a proveedor</h2><p>Las salidas del banco se concilian con los pagos confirmados en cuentas por pagar.</p></div></div>
+  {% if txn.supplier_payment %}<div class="card-body"><p>Conciliado con el <a href="{% url 'supplier_payment' txn.supplier_payment_id %}">pago a {{ txn.supplier_payment.supplier.name }}</a> por {{ txn.supplier_payment.amount|cop }}.</p></div>
+  {% else %}<div class="table-wrap"><table><tbody>{% for p in outflows %}<tr><td><span class="cell-title">{{ p.supplier.name }}</span><small>Pagado el {{ p.paid_on|date:"d/m/Y" }} · {{ p.reference }}</small></td><td class="num">{{ p.amount|cop }}</td>
+    <td class="num"><form method="post" action="{% url 'payment_reconcile' p.pk %}">{% csrf_token %}{{ token_form.token }}<input type="hidden" name="transaction" value="{{ txn.pk }}"><input type="hidden" name="next" value="{% url 'bank_txn' txn.pk %}"><button class="btn btn-sm btn-primary" type="submit">Conciliar</button></form></td></tr>
+  {% empty %}<tr><td><div class="empty">{% icon 'credit-card' %}<strong>No hay pagos confirmados por este valor</strong><small>Registre o confirme el pago en Cuentas por pagar y vuelva a este movimiento.</small></div></td></tr>{% endfor %}</tbody></table></div>{% endif %}
+</section>{% endif %}
+
+{% if applications %}<section class="card">
+  <div class="card-head"><h2>Aplicaciones de este movimiento</h2></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th scope="col">Factura</th><th scope="col" class="num">Valor</th><th scope="col">Propuesta</th><th scope="col">Recibo en el sistema contable</th><th scope="col">Estado</th><th scope="col"><span class="sr-only">Acciones</span></th></tr></thead>
+    <tbody>{% for a in applications %}<tr>
+      <td>{{ a.receivable.document }}<small>{{ a.created_by.display_name }} · {{ a.created_at|date:"d/m/Y H:i" }}</small></td>
+      <td class="num">{{ a.amount|cop }}</td><td>{{ a.get_proposal_display }}</td>
+      <td>{% if a.voucher %}{% if a.voucher.status == 'accepted' %}<span class="chip ok">{{ a.voucher.contable_name }}</span>{% else %}<span class="chip warn">{{ a.voucher.get_status_display }}</span>{% endif %}<small>{{ a.voucher.detail }}</small>{% endif %}</td>
+      <td>{% if a.reversed_at %}<span class="chip bad">Revertida</span><small>{{ a.reversal_reason }}</small>{% else %}<span class="chip ok">Vigente</span>{% endif %}</td>
+      <td class="num">{% if not a.reversed_at %}<details class="confirm"><summary class="btn btn-sm btn-ghost">Revertir</summary><div class="confirm-panel">
+        <form method="post" action="{% url 'application_reverse' a.pk %}">{% csrf_token %}{{ reason_form.token }}<label for="rev-{{ a.pk }}">Motivo</label><input class="input" id="rev-{{ a.pk }}" name="reason" maxlength="300" required>
+        <button class="btn btn-danger solid btn-block" type="submit">Revertir aplicación</button></form></div></details>{% endif %}</td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+</section>{% endif %}
+{% if collections %}<section class="card">
+  <div class="card-head"><h2>Recaudos vinculados</h2></div>
+  <div class="table-wrap"><table><tbody>{% for c in collections %}<tr><td>{{ c.party.name }}<small>{{ c.get_source_display }}{% if c.sale %} · {{ c.sale.label }}{% endif %}</small></td><td class="num">{{ c.amount|cop }}</td></tr>{% endfor %}</tbody></table></div>
+</section>{% endif %}
+{% endblock %}

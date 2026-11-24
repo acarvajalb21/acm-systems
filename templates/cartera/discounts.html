@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+{% block title %}Descuentos y permisos{% endblock %}
+{% block heading %}Descuentos y permisos{% endblock %}
+{% block content %}
+<div class="page-head">
+  <p>Las ventas se registran a precio de lista. La administración concede los descuentos con los permisos que la dirección le asigna cada mes: un permiso equivale a una venta con descuento. Cuando no quedan permisos, el descuento espera la confirmación de la dirección.</p>
+  <span class="chip info">{{ month|date:"F \d\e Y"|capfirst }}</span>
+</div>
+
+{% if owner_view %}
+<section class="card" id="por-confirmar">
+  <div class="card-head"><div><h2>Por confirmar</h2><p>Descuentos fuera del cupo y solicitudes de más permisos. Una venta con descuento en espera no se envía al sistema contable.</p></div>{% if pending %}<span class="chip warn">{{ pending|length }} en espera</span>{% endif %}</div>
+  {% if pending %}<div class="alert-list">{% for r in pending %}
+    <article class="alert-row warning">
+      <span class="alert-icon">{% if r.kind == 'sale' %}{% icon 'percent' %}{% else %}{% icon 'key' %}{% endif %}</span>
+      <div class="alert-body">
+        <h3>{% if r.kind == 'sale' %}{{ r.amount|cop }} de descuento ({{ r.percent }} %) · {{ r.sale.party.name }}{% else %}{{ r.requested_by.display_name }} pide {{ r.quantity }} permisos más{% endif %}</h3>
+        <p>{{ r.requested_by.display_name }} · {{ r.created_at|date:"d/m/Y H:i" }} · «{{ r.reason }}»{% if r.kind == 'sale' %} · <a href="{% url 'sale' r.sale_id %}">ver la venta ({{ r.gross|cop }} a precio de lista)</a>{% endif %}</p>
+      </div>
+      <form class="actions" method="post" action="{% url 'discount_decide' r.pk %}">{% csrf_token %}<input type="hidden" name="token" value="{% new_token %}">
+        {% if r.kind == 'quota' %}<label class="sr-only" for="cant-{{ r.pk }}">Permisos a conceder</label><input class="input" id="cant-{{ r.pk }}" type="number" name="cantidad" min="1" max="200" value="{{ r.quantity }}">{% endif %}
+        <label class="sr-only" for="nota-{{ r.pk }}">Nota</label><input class="input" id="nota-{{ r.pk }}" name="nota" maxlength="300" placeholder="Nota (opcional)">
+        <button class="btn btn-sm btn-danger" type="submit" name="decision" value="rechazar">Rechazar</button>
+        <button class="btn btn-sm btn-primary" type="submit" name="decision" value="aprobar">{% icon 'check' 'sm' %}Aprobar</button>
+      </form>
+    </article>{% endfor %}</div>
+  {% else %}<div class="empty">{% icon 'check-circle' %}<strong>No hay nada por confirmar</strong>Cuando un administrador agote sus permisos, sus descuentos aparecerán aquí para que usted decida.</div>{% endif %}
+</section>
+
+<section class="card">
+  <div class="card-head"><div><h2>Permisos de los administradores</h2><p>Cupo mensual, permisos adicionales de este mes y permisos usados. El cupo se renueva el primer día de cada mes.</p></div></div>
+  <div class="table-wrap"><table class="mobile-records">
+    <thead><tr><th scope="col">Administrador</th><th scope="col">Uso del mes</th><th scope="col" class="num">Descontado</th><th scope="col">Cupo mensual</th><th scope="col">Dar permisos este mes</th></tr></thead>
+    <tbody>{% for q in quotas %}<tr>
+      <td class="record-title" data-label="Administrador"><span class="cell-title">{{ q.user.display_name }}</span><small>{{ q.user.username }}</small></td>
+      <td data-label="Uso del mes"><strong>{{ q.used }} de {{ q.total }}</strong> <small>{% if q.extra %}{{ q.base }} del cupo + {{ q.extra }} adicionales · {% endif %}quedan {{ q.available }}{% if q.pending %} · {{ q.pending }} en espera{% endif %}</small><progress class="meter{% if not q.available %} is-full{% endif %}" max="{{ q.total|default:1 }}" value="{{ q.used }}" aria-label="Permisos usados">{{ q.used }} de {{ q.total }}</progress></td>
+      <td class="num" data-label="Descontado">{{ q.amount|cop }}</td>
+      <td data-label="Cupo mensual"><form class="actions" method="post" action="{% url 'discount_quota' q.user.pk %}">{% csrf_token %}<input type="hidden" name="token" value="{% new_token %}">
+        <label class="sr-only" for="cupo-{{ q.user.pk }}">Cupo mensual de {{ q.user.display_name }}</label><input class="input" id="cupo-{{ q.user.pk }}" type="number" name="cupo" min="0" max="500" value="{{ q.base }}">
+        <button class="btn btn-sm" type="submit">Guardar</button></form></td>
+      <td data-label="Dar permisos este mes"><form class="actions" method="post" action="{% url 'discount_extra' q.user.pk %}">{% csrf_token %}<input type="hidden" name="token" value="{% new_token %}">
+        <label class="sr-only" for="extra-{{ q.user.pk }}">Permisos adicionales</label><input class="input" id="extra-{{ q.user.pk }}" type="number" name="cantidad" min="1" max="200" placeholder="Cantidad">
+        <input type="hidden" name="motivo" value="Concedidos desde Descuentos y permisos">
+        <button class="btn btn-sm btn-primary" type="submit">{% icon 'plus' 'sm' %}Dar</button></form></td>
+    </tr>{% empty %}<tr class="empty-row"><td colspan="5"><div class="empty">{% icon 'users' %}<strong>No hay administradores activos</strong><a href="{% url 'new_user' %}">Crear una cuenta de administrador</a></div></td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% else %}
+<div class="kpis">
+  <div class="kpi"><span class="kpi-icon {% if quota.available %}ok{% else %}bad{% endif %}">{% icon 'key' 'lg' %}</span><span class="kpi-body"><span class="kpi-label">Permisos disponibles</span><span class="kpi-value">{{ quota.available }}</span><span class="kpi-sub">de {{ quota.total }} este mes{% if quota.extra %} · {{ quota.extra }} adicionales{% endif %}</span></span></div>
+  <div class="kpi"><span class="kpi-icon warn">{% icon 'percent' 'lg' %}</span><span class="kpi-body"><span class="kpi-label">Descuentos concedidos</span><span class="kpi-value">{{ quota.used }}</span><span class="kpi-sub">Suman {{ quota.amount|pesos }}</span></span></div>
+  <div class="kpi"><span class="kpi-icon">{% icon 'clock' 'lg' %}</span><span class="kpi-body"><span class="kpi-label">En espera de la dirección</span><span class="kpi-value">{{ quota.pending }}</span><span class="kpi-sub">Descuentos o permisos solicitados</span></span></div>
+</div>
+<section class="card">
+  <div class="card-head"><div><h2>Pedir más permisos</h2><p>La dirección recibe la solicitud con el motivo y decide cuántos permisos concede para este mes.</p></div></div>
+  <div class="card-body"><form method="post" action="{% url 'discount_permits' %}" class="form-grid">{% csrf_token %}<input type="hidden" name="token" value="{% new_token %}">
+    <div class="field"><label for="cantidad">Permisos que necesita</label><input class="input" id="cantidad" type="number" name="cantidad" min="1" max="200" required></div>
+    <div class="field"><label for="motivo">Motivo</label><input class="input" id="motivo" name="motivo" maxlength="300" required placeholder="Ej.: pedido por volumen de un cliente frecuente"></div>
+    <div class="form-actions span-all"><button class="btn btn-primary" type="submit">{% icon 'arrow-up-right' %}Enviar a la dirección</button></div>
+  </form></div>
+</section>
+{% if mine %}<section class="card">
+  <div class="card-head"><h2>Mis solicitudes</h2></div>
+  <div class="table-wrap"><table class="mobile-records">
+    <thead><tr><th scope="col">Fecha</th><th scope="col">Solicitud</th><th scope="col">Estado</th><th scope="col"><span class="sr-only">Acciones</span></th></tr></thead>
+    <tbody>{% for r in mine %}<tr>
+      <td class="nowrap" data-label="Fecha">{{ r.created_at|date:"d/m/Y H:i" }}</td>
+      <td class="record-title" data-label="Solicitud">{% if r.kind == 'sale' %}<a class="cell-title" href="{% url 'sale' r.sale_id %}">{{ r.amount|cop }} · {{ r.sale.party.name }}</a>{% else %}<span class="cell-title">{{ r.quantity }} permisos más</span>{% endif %}<small>{{ r.reason }}</small></td>
+      <td data-label="Estado">{% include 'cartera/_discount_status.html' %}{% if r.decision_note %}<small>{{ r.decision_note }}</small>{% endif %}</td>
+      <td class="num record-actions" data-label="Acciones">{% if r.status == 'pending' %}<form method="post" action="{% url 'discount_withdraw' r.pk %}">{% csrf_token %}<input type="hidden" name="token" value="{% new_token %}"><button class="btn btn-sm btn-ghost" type="submit">Retirar</button></form>{% endif %}</td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+</section>{% endif %}
+{% endif %}
+
+<section class="card">
+  <div class="card-head"><div><h2>Descuentos de {{ month|date:"F"|lower }}</h2><p>Quién concedió cada descuento, si usó un permiso y si lo confirmó la dirección.</p></div></div>
+  <div class="table-wrap"><table class="mobile-records">
+    <thead><tr><th scope="col">Venta</th><th scope="col" class="num">Descuento</th><th scope="col">Concedió</th><th scope="col">Permiso</th><th scope="col">Estado</th></tr></thead>
+    <tbody>{% for d in granted %}<tr>
+      <td class="record-title" data-label="Venta"><a class="cell-title" href="{% url 'sale' d.sale_id %}">{{ d.sale.label }} · {{ d.sale.party.name }}</a><small>{{ d.reason }}</small></td>
+      <td class="num strong" data-label="Descuento">{{ d.amount|cop }}<small>{{ d.percent }} % de {{ d.gross|cop }}</small></td>
+      <td data-label="Concedió">{{ d.applied_by.display_name }}<small>{{ d.created_at|date:"d/m/Y H:i" }}</small></td>
+      <td data-label="Permiso">{% if d.consumed %}<span class="chip info">Usó 1 permiso</span>{% elif d.approved_by %}<span class="chip ok">Confirmó {{ d.approved_by.display_name }}</span>{% else %}<span class="chip plain">Mismo permiso</span>{% endif %}</td>
+      <td data-label="Estado">{% if d.status == 'active' %}{% if d.sale.status == 'issued' %}<span class="chip ok">Facturado</span>{% else %}<span class="chip">{{ d.sale.get_status_display }}</span>{% endif %}{% else %}<span class="chip plain">{{ d.get_status_display }}</span><small>{{ d.end_note }}</small>{% endif %}</td>
+    </tr>{% empty %}<tr class="empty-row"><td colspan="5"><div class="empty">{% icon 'percent' %}<strong>Sin descuentos este mes</strong><small>Los descuentos se conceden desde una venta en borrador.</small></div></td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+
+{% if owner_view and decided %}<section class="card">
+  <div class="card-head"><h2>Decisiones recientes</h2></div>
+  <div class="table-wrap"><table class="mobile-records">
+    <thead><tr><th scope="col">Solicitud</th><th scope="col">Pidió</th><th scope="col">Decisión</th></tr></thead>
+    <tbody>{% for r in decided %}<tr>
+      <td class="record-title" data-label="Solicitud"><span class="cell-title">{% if r.kind == 'sale' %}{{ r.amount|cop }} · {{ r.sale.party.name }}{% else %}{{ r.quantity }} permisos{% if r.granted %} (concedidos {{ r.granted }}){% endif %}{% endif %}</span><small>{{ r.reason }}</small></td>
+      <td data-label="Pidió">{{ r.requested_by.display_name }}<small>{{ r.created_at|date:"d/m/Y H:i" }}</small></td>
+      <td data-label="Decisión">{% include 'cartera/_discount_status.html' %}{% if r.decision_note %}<small>{{ r.decision_note }}</small>{% endif %}</td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+</section>{% endif %}
+{% endblock %}
